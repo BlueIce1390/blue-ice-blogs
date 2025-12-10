@@ -553,7 +553,11 @@
 
                         <!-- 2. BLOG READER VIEW (Hidden by default) -->
                         <div id="blog-reader" class="glass" style="padding: 40px;">
-                            <button onclick="closeReader()" class="btn-ice" style="margin-bottom: 20px;">← Back to Journal</button>
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                                <button onclick="closeReader()" class="btn-ice">← Back to Journal</button>
+                                <button onclick="toggleSavePost()" id="btn-save-post" class="btn-ice">❤️ Save</button>
+                            </div>
+                            
                             <div class="reader-header">
                                 <div id="reader-title" class="reader-title">Post Title</div>
                                 <div class="reader-meta">
@@ -685,10 +689,15 @@
                         <div id="user-dashboard" style="display:none; text-align:left; background:var(--glass-highlight); padding:15px; border-radius:8px; border:1px solid var(--glass-border); margin-bottom:20px;">
                             <div style="font-weight:700; margin-bottom:10px; color:var(--accent-cyan);">My Account</div>
                             <ul style="list-style:none; padding:0; font-size:0.9rem;">
-                                <li style="padding:8px 0; border-bottom:1px solid var(--glass-border); cursor:pointer;">⚙️ Account Settings</li>
-                                <li style="padding:8px 0; border-bottom:1px solid var(--glass-border); cursor:pointer;">💬 My Comments</li>
-                                <li style="padding:8px 0; cursor:pointer;">❤️ Saved Posts</li>
+                                <li onclick="showDashboardSection('settings')" style="padding:8px 0; border-bottom:1px solid var(--glass-border); cursor:pointer;">⚙️ Account Settings</li>
+                                <li onclick="showDashboardSection('comments')" style="padding:8px 0; border-bottom:1px solid var(--glass-border); cursor:pointer;">💬 My Comments</li>
+                                <li onclick="showDashboardSection('saved')" style="padding:8px 0; cursor:pointer;">❤️ Saved Posts</li>
                             </ul>
+                            
+                            <!-- CONTENT AREA FOR TABS -->
+                            <div id="dashboard-content" style="margin-top:20px; border-top:1px solid var(--glass-border); padding-top:15px; display:none;">
+                                <!-- Dynamic Content injected here -->
+                            </div>
                         </div>
 
                         <button class="btn-ice" style="width:100%; padding: 12px;" onclick="performLogout()">Logout</button>
@@ -714,7 +723,6 @@
                 <ul class="pixel-list">
                     <li onclick="showPage('projects')"><span class="px-icon"></span> My Works</li>
                     <li onclick="showPage('blog')"><span class="px-icon"></span> Journal</li>
-                    <li><span class="px-icon"></span> <a href="https://discord.gg/d2GqRFUnBx" target="_blank">Discord Server</a></li>
                 </ul>
             </div>
         </aside>
@@ -728,7 +736,7 @@
     <!-- FIREBASE MODULE -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged, signInAnonymously, signInWithCustomToken, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
         import { getFirestore, collection, getDocs, addDoc, query, orderBy } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
         // ==========================================
@@ -822,6 +830,18 @@
             }
         };
 
+        window.resetPassword = async () => {
+            if(!auth) return;
+            const email = auth.currentUser.email;
+            if(!email) return alert("No email found.");
+            try {
+                await sendPasswordResetEmail(auth, email);
+                alert(`Password reset email sent to ${email}`);
+            } catch(e) {
+                alert("Error: " + e.message);
+            }
+        }
+
         // --- DYNAMIC CONTENT FETCHING ---
         window.loadDynamicContent = async () => {
             if (!db) {
@@ -886,9 +906,12 @@
                 if (user) {
                     const name = user.displayName || user.email.split('@')[0];
                     window.currentUser = name;
+                    // Expose auth user for dashboard logic
+                    window.authUser = user; 
                     updateUIForLogin(user.email);
                 } else {
                     window.currentUser = null;
+                    window.authUser = null;
                     updateUIForLogout();
                 }
             });
@@ -1060,7 +1083,8 @@
             
             renderComments(post);
             window.updateCommentFormVisibility(); 
-            
+            updateSaveButtonState(); // Update save button state on open
+
             document.getElementById('blog-list').style.display = 'none';
             document.getElementById('blog-reader').style.display = 'block';
             document.getElementById('blog').scrollIntoView({behavior: 'smooth'});
@@ -1112,7 +1136,109 @@
             document.getElementById('new-comment-text').value = "";
         };
 
-        // --- 5. INIT ---
+        // --- 5. DASHBOARD & SAVING LOGIC ---
+        
+        function toggleSavePost() {
+            if(!currentPostId) return;
+            let saved = JSON.parse(localStorage.getItem('blueice_saved')) || [];
+            const index = saved.indexOf(currentPostId);
+            
+            if(index > -1) {
+                saved.splice(index, 1);
+                alert("Removed from Saved Posts.");
+            } else {
+                saved.push(currentPostId);
+                alert("Post Saved!");
+            }
+            localStorage.setItem('blueice_saved', JSON.stringify(saved));
+            updateSaveButtonState();
+        }
+
+        function updateSaveButtonState() {
+            const btn = document.getElementById('btn-save-post');
+            if(!currentPostId) return;
+            let saved = JSON.parse(localStorage.getItem('blueice_saved')) || [];
+            
+            if(saved.includes(currentPostId)) {
+                btn.innerHTML = "❤️ Saved";
+                btn.style.borderColor = "var(--accent-cyan)";
+                btn.style.color = "var(--accent-cyan)";
+            } else {
+                btn.innerHTML = "🤍 Save";
+                btn.style.borderColor = "var(--glass-border)";
+                btn.style.color = "var(--text-primary)";
+            }
+        }
+
+        function showDashboardSection(section) {
+            const container = document.getElementById('dashboard-content');
+            container.style.display = 'block';
+            container.innerHTML = '';
+
+            if(section === 'settings') {
+                container.innerHTML = `
+                    <div style="margin-bottom:15px; font-weight:700;">Account Details</div>
+                    <div style="font-size:0.9rem; color:var(--text-secondary); margin-bottom:5px;">Email: ${window.authUser?.email}</div>
+                    <div style="font-size:0.9rem; color:var(--text-secondary); margin-bottom:15px;">User ID: ${window.authUser?.uid}</div>
+                    <button class="btn-ice" onclick="resetPassword()" style="font-size:0.8rem;">Send Password Reset Email</button>
+                `;
+            } else if(section === 'comments') {
+                // Find comments by this user
+                let myComments = [];
+                // Combine lists to search
+                const allPosts = [...window.liveBlogPosts, ...window.staticBlogPosts];
+                // Dedupe roughly by ID
+                const uniquePosts = Array.from(new Map(allPosts.map(item => [item.id, item])).values());
+
+                uniquePosts.forEach(post => {
+                    if(post.comments) {
+                        post.comments.forEach(c => {
+                            if(c.user === window.currentUser) {
+                                myComments.push({ postTitle: post.title, text: c.text, postId: post.id });
+                            }
+                        });
+                    }
+                });
+
+                if(myComments.length === 0) {
+                    container.innerHTML = `<div style="font-style:italic; opacity:0.7;">You haven't commented on anything yet.</div>`;
+                } else {
+                    container.innerHTML = `<div style="margin-bottom:15px; font-weight:700;">Your Comments</div>`;
+                    myComments.forEach(c => {
+                        container.innerHTML += `
+                            <div style="background:rgba(0,0,0,0.03); padding:10px; border-radius:6px; margin-bottom:10px; font-size:0.9rem;">
+                                <div style="font-weight:600; margin-bottom:4px;">On "${c.postTitle}"</div>
+                                <div style="font-style:italic;">"${c.text}"</div>
+                                <div style="margin-top:5px; font-size:0.8rem; color:var(--accent-cyan); cursor:pointer;" onclick="showPage('blog'); openReader('${c.postId}')">Go to Post →</div>
+                            </div>
+                        `;
+                    });
+                }
+
+            } else if(section === 'saved') {
+                const savedIds = JSON.parse(localStorage.getItem('blueice_saved')) || [];
+                const allPosts = [...window.liveBlogPosts, ...window.staticBlogPosts];
+                const uniquePosts = Array.from(new Map(allPosts.map(item => [item.id, item])).values());
+                
+                const savedPosts = uniquePosts.filter(p => savedIds.includes(p.id));
+
+                if(savedPosts.length === 0) {
+                    container.innerHTML = `<div style="font-style:italic; opacity:0.7;">No saved posts yet.</div>`;
+                } else {
+                    container.innerHTML = `<div style="margin-bottom:15px; font-weight:700;">Saved Articles</div>`;
+                    savedPosts.forEach(p => {
+                        container.innerHTML += `
+                            <div style="display:flex; align-items:center; justify-content:space-between; padding:10px; border-bottom:1px solid var(--glass-border);">
+                                <span style="font-weight:600; font-size:0.9rem;">${p.title}</span>
+                                <button class="btn-ice" style="padding:4px 8px; font-size:0.75rem;" onclick="showPage('blog'); openReader('${p.id}')">Read</button>
+                            </div>
+                        `;
+                    });
+                }
+            }
+        }
+
+        // --- 6. INIT ---
         window.addEventListener('load', () => {
             // Boot screen
             const bar = document.getElementById('boot-bar'); let w = 0;
