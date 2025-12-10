@@ -332,6 +332,11 @@
             display: flex; align-items: center; justify-content: center;
             font-size: 2rem; border: 1px solid var(--glass-border);
         }
+        
+        /* Updated Post Thumb for Images */
+        .post-thumb-rect img {
+            width: 100%; height: 100%; object-fit: cover;
+        }
 
         /* --- BLOG READER VIEW --- */
         #blog-reader { display: none; animation: fadeIn 0.5s ease; }
@@ -342,6 +347,13 @@
         .reader-content p { margin-bottom: 20px; }
         .reader-content h3 { margin-top: 30px; margin-bottom: 15px; font-size: 1.4rem; color: var(--accent-cyan); }
         
+        /* New Hero Image Style */
+        .reader-cover-img {
+            width: 100%; height: 350px; object-fit: cover; border-radius: 8px;
+            margin-bottom: 30px; border: 1px solid var(--glass-border);
+            display: none; /* Hidden by default if no image */
+        }
+
         /* Comments Section */
         .comments-section { margin-top: 50px; border-top: 1px solid var(--glass-border); padding-top: 30px; }
         .comments-header { font-size: 1.2rem; font-weight: 700; margin-bottom: 20px; }
@@ -361,6 +373,7 @@
             .blog-internal-layout { grid-template-columns: 1fr; }
             .post-card-horiz { flex-direction: column-reverse; }
             .post-thumb-rect { width: 100%; height: 180px; }
+            .reader-cover-img { height: 200px; }
         }
 
         /* --- 11. SIDEBAR WIDGETS --- */
@@ -472,19 +485,19 @@
             <div id="home" class="page-section active">
                 <div class="glass tilt-card" style="padding: 40px; margin-bottom: 30px;">
                     <h1 id="typewriter"></h1>
-                    <p style="font-size: 1.1rem; color: var(--accent-cyan); margin-bottom: 20px;">Minimal. Functional. Cold.</p>
+                    <p style="font-size: 1.1rem; color: var(--accent-cyan); margin-bottom: 20px;">College Student. Video Editor. Cool Guy.</p>
                     <p style="color: var(--text-secondary); max-width: 600px;">
-                        Welcome to my personal corner of the web. A distraction-free environment for sharing projects and thoughts.
+                        Welcome to my personal corner of the web. I am a 17 year old college student who also makes video essays. This website is a home for my projects and blog. Feel free to contact me if you want to work together!
                     </p>
                 </div>
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
                     <div class="glass tilt-card" style="padding: 25px;">
                         <h3>Latest</h3>
-                        <p style="margin-top: 10px; font-size: 0.9rem; color: var(--text-secondary);">Redesigned interface.</p>
+                        <p style="margin-top: 10px; font-size: 0.9rem; color: var(--text-secondary);">WEBSITE IS LIVE!!!!!</p>
                     </div>
                     <div class="glass tilt-card" style="padding: 25px;">
                         <h3>Status</h3>
-                        <p style="margin-top: 10px; font-size: 0.9rem; color: var(--text-secondary);">Building React Modules.</p>
+                        <p style="margin-top: 10px; font-size: 0.9rem; color: var(--text-secondary);">Vibe Coding</p>
                     </div>
                 </div>
             </div>
@@ -558,6 +571,8 @@
                                 <button onclick="toggleSavePost()" id="btn-save-post" class="btn-ice">❤️ Save</button>
                             </div>
                             
+                            <img id="reader-cover" class="reader-cover-img" src="" alt="Cover">
+
                             <div class="reader-header">
                                 <div id="reader-title" class="reader-title">Post Title</div>
                                 <div class="reader-meta">
@@ -967,7 +982,7 @@
                 date: "2025-12-09",
                 category: "Engineering",
                 excerpt: "Stripping back aesthetics for cleaner looks.",
-                emoji: "🔮",
+                image: "image1.jpg",
                 content: `<p>In a world of maximalist design...</p>`, 
                 comments: []
             },
@@ -977,7 +992,7 @@
                 date: "2025-12-01",
                 category: "Personal",
                 excerpt: "Deep blue gradients in UI design.",
-                emoji: "🌌",
+                image: "image2.jpg",
                 content: `<p>There is something inherently calming...</p>`,
                 comments: []
             }
@@ -1054,6 +1069,14 @@
             list.innerHTML = "";
             posts.forEach(p => {
                 const stats = calculateReadStats(p.content);
+                
+                let thumbContent;
+                if (p.image) {
+                    thumbContent = `<img src="${p.image}" alt="${p.title}" style="width:100%; height:100%; object-fit:cover;">`;
+                } else {
+                    thumbContent = p.emoji || '📄';
+                }
+
                 const div = document.createElement('div');
                 div.className = "glass tilt-card post-card-horiz";
                 div.onclick = () => openReader(p.id);
@@ -1062,7 +1085,7 @@
                         <div class="post-meta-row"><span>📅 ${p.date}</span><span class="meta-tag"># ${p.category}</span></div>
                         <h3 class="post-title-lg">${p.title}</h3><p class="post-excerpt-sm">${p.excerpt}</p>
                         <div class="post-stats">${stats.count} words | ${stats.time} min read</div>
-                    </div><div class="post-thumb-rect">${p.emoji || '📄'}</div>`;
+                    </div><div class="post-thumb-rect">${thumbContent}</div>`;
                 list.appendChild(div);
             });
         }
@@ -1080,6 +1103,15 @@
             document.getElementById('reader-date').innerText = "📅 " + post.date;
             document.getElementById('reader-stats').innerText = `${stats.count} words • ${stats.time} min read`;
             document.getElementById('reader-body').innerHTML = post.content;
+            
+            // Handle Cover Image
+            const coverImg = document.getElementById('reader-cover');
+            if (post.image) {
+                coverImg.src = post.image;
+                coverImg.style.display = 'block';
+            } else {
+                coverImg.style.display = 'none';
+            }
             
             renderComments(post);
             window.updateCommentFormVisibility(); 
@@ -1258,7 +1290,7 @@
         });
 
         // Typewriter & Particles
-        const txt = "Blue Ice Systems."; let ti = 0;
+        const txt = "Hi, I'm Archan."; let ti = 0;
         function typeWriter() { const el = document.getElementById('typewriter'); if(ti < txt.length && el) { el.innerHTML += txt.charAt(ti); ti++; setTimeout(typeWriter, 100); } }
         
         const canvas = document.getElementById('particle-canvas');
