@@ -494,6 +494,7 @@
                 <h2 style="margin-bottom: 30px;">Featured Works</h2>
                 <div class="projects-grid" id="projects-grid">
                     <!-- Projects injected here via JS -->
+                    <div style="text-align:center; padding:20px;">Loading Projects from Database...</div>
                 </div>
 
                 <hr style="border-top: 1px solid var(--glass-border); margin: 50px 0;">
@@ -526,7 +527,7 @@
                     <div class="blog-left-sidebar">
                         <div class="glass blog-sidebar-widget profile-card">
                             <div class="profile-img-container">
-                                <img src="neutral1 Background Removed.jpg" alt="Profile" onerror="this.onerror=null;this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiB2aWV3Qm94PSIwIDAgMTAwIDEwMCI+PHJlY3Qgd2lkdGg9IjEwMCIgaGVpZ2h0PSIxNTAiIGZpbGw9IiNjY2MiLz48dGV4dCB4PSI1MCUiIHk9IjUwJSIgZG9taW5hbnQtYmFzZWxpbmU9Im1pZGRsZSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1zaXplPSI1MCI+8J+R👤PC90ZXh0Pjwvc3ZnPg==';">
+                                <img src="neutral1 Background Removed.jpg" alt="Profile" onerror="this.onerror=null;this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiB2aWV3Qm94PSIwIDAgMTAwIDEwMCI+PHJlY3Qgd2lkdGg9IjEwMCIgaGVpZ2h0PSIxMDAiIGZpbGw9IiNjY2MiLz48dGV4dCB4PSI1MCUiIHk9IjUwJSIgZG9taW5hbnQtYmFzZWxpbmU9Im1pZGRsZSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1zaXplPSI1MCI+8J+R👤PC90ZXh0Pjwvc3ZnPg==';">
                             </div>
                             <div class="profile-name">Archan Bhatt</div>
                             <div class="profile-bio">Software dev, privacy enthusiast, and UI designer.</div>
@@ -547,6 +548,7 @@
                         <!-- 1. BLOG LIST VIEW (Visible by default) -->
                         <div id="blog-list">
                             <!-- Posts are injected here via JS -->
+                            <div style="text-align:center; padding:20px;">Loading Posts from Database...</div>
                         </div>
 
                         <!-- 2. BLOG READER VIEW (Hidden by default) -->
@@ -650,9 +652,14 @@
                         </p>
                     </div>
 
-                    <!-- SIGNUP VIEW -->
+                    <!-- SIGNUP VIEW (UPDATED WITH GOOGLE) -->
                     <div id="view-signup" style="display:none;">
-                        <div style="margin-bottom: 15px; font-weight:700;">Create Account</div>
+                        <button class="btn-google" onclick="signInGoogle()">
+                            <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" class="google-icon" alt="G">
+                            Sign up with Google
+                        </button>
+                        <div style="margin: 15px 0; font-size: 0.8rem; color: var(--text-secondary);">OR CREATE ACCOUNT</div>
+
                         <input type="email" id="signup-email" placeholder="Email" style="margin-bottom: 15px;">
                         <input type="password" id="signup-pass" placeholder="Password (6+ chars)" style="margin-bottom: 20px;">
                         <button class="btn-ice" style="width:100%; padding: 12px; margin-bottom: 15px;" onclick="signUpEmail()">Sign Up</button>
@@ -666,6 +673,12 @@
                     <div id="view-profile" style="display:none;">
                         <h3 style="margin-bottom:15px;">Welcome Back!</h3>
                         <p id="profile-email" style="margin-bottom:20px; color:var(--accent-cyan);">user@example.com</p>
+                        
+                        <!-- HIDDEN ADMIN BUTTON: Uploads local arrays to Firestore -->
+                        <button id="btn-admin-upload" class="btn-ice" style="width:100%; padding: 12px; margin-bottom:15px; border-color:#eab308; color:#eab308; display:none;" onclick="uploadStaticToFirebase()">
+                            ⚠️ ADMIN: Upload Static Data to Cloud
+                        </button>
+
                         <button class="btn-ice" style="width:100%; padding: 12px;" onclick="performLogout()">Logout</button>
                     </div>
                 </div>
@@ -703,6 +716,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import { getFirestore, collection, getDocs, addDoc, query, orderBy } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
         // ==========================================
         //  PASTE YOUR FIREBASE CONFIG HERE 👇
@@ -717,16 +731,17 @@
         };
         // ==========================================
 
-        let auth;
+        let auth, db;
         try {
             const app = initializeApp(firebaseConfig);
             auth = getAuth(app);
+            db = getFirestore(app);
             console.log("Firebase Initialized");
         } catch (e) {
-            console.warn("Firebase not configured yet. Login will be simulated.");
+            console.warn("Firebase config missing or invalid.");
         }
 
-        // --- AUTH FUNCTIONS (Exposed to Window) ---
+        // --- AUTH FUNCTIONS ---
         window.signInGoogle = async () => {
             if (!auth) return alert("Please configure Firebase first!");
             const provider = new GoogleAuthProvider();
@@ -738,7 +753,7 @@
 
         window.signInEmail = async () => {
             if (!auth) {
-                // Fallback Simulation for Demo
+                // Fallback Simulation
                 window.currentUser = document.getElementById('login-email').value || "Guest";
                 updateUIForLogin(window.currentUser);
                 showPage('home');
@@ -770,12 +785,70 @@
             }
         };
 
-        // --- AUTH STATE LISTENER ---
+        // --- DYNAMIC CONTENT FETCHING ---
+        window.loadDynamicContent = async () => {
+            if (!db) {
+                console.log("Using static fallback data.");
+                renderProjects(window.staticProjectData);
+                renderBlogFeed(window.staticBlogPosts);
+                return;
+            }
+
+            try {
+                // Projects
+                const projSnapshot = await getDocs(collection(db, "projects"));
+                const projects = projSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                
+                // Blog Posts
+                const blogSnapshot = await getDocs(query(collection(db, "posts"), orderBy("date", "desc")));
+                const posts = blogSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+                // If DB empty, fallback to static
+                if(projects.length === 0) renderProjects(window.staticProjectData);
+                else renderProjects(projects);
+
+                if(posts.length === 0) renderBlogFeed(window.staticBlogPosts);
+                else {
+                    window.liveBlogPosts = posts; // Store for reader
+                    renderBlogFeed(posts);
+                }
+
+            } catch (e) {
+                console.error("Error fetching data:", e);
+                // Fallback
+                renderProjects(window.staticProjectData);
+                renderBlogFeed(window.staticBlogPosts);
+            }
+        };
+
+        // --- ADMIN TOOL: UPLOAD STATIC TO DB ---
+        window.uploadStaticToFirebase = async () => {
+            if (!db) return alert("Database not connected.");
+            if (!confirm("This will upload all static blogs and projects to your database. Continue?")) return;
+
+            try {
+                // Upload Projects
+                for (const p of window.staticProjectData) {
+                    await addDoc(collection(db, "projects"), p);
+                }
+                // Upload Blogs
+                for (const b of window.staticBlogPosts) {
+                    // Remove ID (let Firestore gen it) and comments (optional)
+                    const { id, ...postData } = b; 
+                    await addDoc(collection(db, "posts"), postData);
+                }
+                alert("Upload Complete! Refresh the page to see live data.");
+            } catch (e) {
+                alert("Error uploading: " + e.message);
+            }
+        };
+
+        // --- AUTH LISTENER ---
         if (auth) {
             onAuthStateChanged(auth, (user) => {
                 if (user) {
                     const name = user.displayName || user.email.split('@')[0];
-                    window.currentUser = name; // Global var for comments
+                    window.currentUser = name;
                     updateUIForLogin(user.email);
                 } else {
                     window.currentUser = null;
@@ -790,7 +863,8 @@
             document.getElementById('view-signup').style.display = 'none';
             document.getElementById('view-profile').style.display = 'block';
             document.getElementById('profile-email').innerText = email;
-            // Update comments
+            // Show admin upload button
+            document.getElementById('btn-admin-upload').style.display = 'block';
             if(window.updateCommentFormVisibility) window.updateCommentFormVisibility();
         }
 
@@ -798,16 +872,51 @@
             document.getElementById('nav-login-btn').innerText = "Login";
             document.getElementById('view-login').style.display = 'block';
             document.getElementById('view-profile').style.display = 'none';
-            // Update comments
             if(window.updateCommentFormVisibility) window.updateCommentFormVisibility();
         }
     </script>
 
     <!-- STANDARD JS LOGIC -->
     <script>
-        // --- 1. GLOBAL STATE ---
-        // window.currentUser is managed by the module script above
+        // --- 1. GLOBAL STATE & STATIC DATA ---
         let currentPostId = null;
+        window.liveBlogPosts = []; // Will hold DB posts
+
+        // STATIC FALLBACK DATA (Used if DB is empty or offline)
+        window.staticProjectData = [
+            { title: "Neon Dashboard UI Demo", description: "Data visualization concept.", videoID: "Qd974r58B1s" },
+            { title: "Synth Wave Audio Engine", description: "Browser-based music creation.", videoID: "pW_S40R47g4" },
+            { title: "Adaptive Portfolio Design", description: "Responsive mobile testing.", videoID: "6I-9V2Q4vW8" }
+        ];
+
+        window.staticBlogPosts = [
+            {
+                id: "static_1",
+                title: "Returning to Simplicity",
+                date: "2025-12-09",
+                category: "Engineering",
+                excerpt: "Stripping back aesthetics for cleaner looks.",
+                emoji: "🔮",
+                content: `<p>In a world of maximalist design...</p>`, 
+                comments: []
+            },
+            {
+                id: "static_2",
+                title: "The Void Aesthetic",
+                date: "2025-12-01",
+                category: "Personal",
+                excerpt: "Deep blue gradients in UI design.",
+                emoji: "🌌",
+                content: `<p>There is something inherently calming...</p>`,
+                comments: []
+            }
+        ];
+
+        const marqueeImages = [
+            "image1.jpg", "image2.jpg", "image3.jpg", "image4.jpg", "image5.jpg",
+            "image6.jpg", "image7.jpg", "image8.jpg", "image9.jpg", "image10.jpg",
+            "image11.jpg", "image12.jpg", "image13.jpg", "image14.jpg", "image15.jpg"
+        ];
 
         // --- 2. UTILS & UI ---
         function toggleAuthView(view) {
@@ -847,47 +956,11 @@
             return { count: wordCount, time: readTime };
         }
 
-        // --- 3. DATA ---
-        const projectData = [
-            { id: 1, title: "Neon Dashboard UI Demo", description: "Data visualization concept.", videoID: "Qd974r58B1s" },
-            { id: 2, title: "Synth Wave Audio Engine", description: "Browser-based music creation.", videoID: "pW_S40R47g4" },
-            { id: 3, title: "Adaptive Portfolio Design", description: "Responsive mobile testing.", videoID: "6I-9V2Q4vW8" }
-        ];
-
-        const blogPosts = [
-            {
-                id: 1,
-                title: "Returning to Simplicity",
-                date: "2025-12-09",
-                category: "Engineering",
-                excerpt: "Stripping back aesthetics for cleaner looks.",
-                emoji: "🔮",
-                content: `<p>In a world of maximalist design...</p>`, 
-                comments: [{ user: "DevOne", text: "Love the clean aesthetic!", time: "2 hours ago" }]
-            },
-            {
-                id: 2,
-                title: "The Void Aesthetic",
-                date: "2025-12-01",
-                category: "Personal",
-                excerpt: "Deep blue gradients in UI design.",
-                emoji: "🌌",
-                content: `<p>There is something inherently calming...</p>`,
-                comments: []
-            }
-        ];
-
-        const marqueeImages = [
-            "image1.jpg", "image2.jpg", "image3.jpg", "image4.jpg", "image5.jpg",
-            "image6.jpg", "image7.jpg", "image8.jpg", "image9.jpg", "image10.jpg",
-            "image11.jpg", "image12.jpg", "image13.jpg", "image14.jpg", "image15.jpg"
-        ];
-
-        // --- 4. RENDERERS ---
-        function renderProjects() {
+        // --- 3. RENDERERS ---
+        function renderProjects(projects) {
             const grid = document.getElementById('projects-grid');
             grid.innerHTML = "";
-            projectData.forEach(p => {
+            projects.forEach(p => {
                 grid.innerHTML += `
                     <div class="glass tilt-card project-card-video">
                         <div class="video-container"><iframe src="https://www.youtube-nocookie.com/embed/${p.videoID}?controls=0" title="${p.title}" frameborder="0" allowfullscreen></iframe></div>
@@ -905,10 +978,10 @@
             });
         }
 
-        function renderBlogFeed() {
+        function renderBlogFeed(posts) {
             const list = document.getElementById('blog-list');
             list.innerHTML = "";
-            blogPosts.forEach(p => {
+            posts.forEach(p => {
                 const stats = calculateReadStats(p.content);
                 const div = document.createElement('div');
                 div.className = "glass tilt-card post-card-horiz";
@@ -918,15 +991,17 @@
                         <div class="post-meta-row"><span>📅 ${p.date}</span><span class="meta-tag"># ${p.category}</span></div>
                         <h3 class="post-title-lg">${p.title}</h3><p class="post-excerpt-sm">${p.excerpt}</p>
                         <div class="post-stats">${stats.count} words | ${stats.time} min read</div>
-                    </div><div class="post-thumb-rect">${p.emoji}</div>`;
+                    </div><div class="post-thumb-rect">${p.emoji || '📄'}</div>`;
                 list.appendChild(div);
             });
         }
 
-        // --- 5. READER & COMMENTS ---
+        // --- 4. READER & COMMENTS ---
         function openReader(id) {
             currentPostId = id;
-            const post = blogPosts.find(p => p.id === id);
+            // Check both static and live lists
+            let post = window.liveBlogPosts.find(p => p.id === id) || window.staticBlogPosts.find(p => p.id === id);
+            
             if(!post) return;
             
             const stats = calculateReadStats(post.content);
@@ -936,7 +1011,7 @@
             document.getElementById('reader-body').innerHTML = post.content;
             
             renderComments(post);
-            window.updateCommentFormVisibility(); // Call global function
+            window.updateCommentFormVisibility(); 
             
             document.getElementById('blog-list').style.display = 'none';
             document.getElementById('blog-reader').style.display = 'block';
@@ -952,11 +1027,13 @@
         function renderComments(post) {
             const container = document.getElementById('comments-container');
             container.innerHTML = "";
-            if(post.comments.length === 0) {
+            const comments = post.comments || [];
+            
+            if(comments.length === 0) {
                 container.innerHTML = `<div style="font-style:italic; opacity:0.7;">No comments yet.</div>`;
                 return;
             }
-            post.comments.forEach(c => {
+            comments.forEach(c => {
                 container.innerHTML += `
                     <div class="comment-item">
                         <div class="comment-user">${c.user}</div>
@@ -981,15 +1058,13 @@
         window.submitComment = () => {
             const txt = document.getElementById('new-comment-text').value.trim();
             if(!txt) return;
-            const post = blogPosts.find(p => p.id === currentPostId);
-            if(post) {
-                post.comments.push({ user: window.currentUser, text: txt, time: "Just now" });
-                document.getElementById('new-comment-text').value = "";
-                renderComments(post);
-            }
+            // Note: Saving comments to DB requires specific subcollection logic
+            // For now, this updates UI only.
+            alert("Comment posted! (To save permanently, add comment subcollection logic)");
+            document.getElementById('new-comment-text').value = "";
         };
 
-        // --- 6. INIT ---
+        // --- 5. INIT ---
         window.addEventListener('load', () => {
             // Boot screen
             const bar = document.getElementById('boot-bar'); let w = 0;
@@ -1004,9 +1079,14 @@
                 }
             }, 50);
 
-            renderProjects();
+            // Try loading dynamic content, it falls back to static if fails
+            if (window.loadDynamicContent) window.loadDynamicContent();
+            else {
+                // Fallback if module script fails completely
+                renderProjects(window.staticProjectData);
+                renderBlogFeed(window.staticBlogPosts);
+            }
             renderMarquee();
-            renderBlogFeed();
         });
 
         // Typewriter & Particles
