@@ -24,6 +24,8 @@
             --orb-opacity: 0.15;
             --font-pixel: 'VT323', monospace;
             --font-main: 'Montserrat', sans-serif;
+            --error-red: #dc2626;
+            --warning-yellow: #eab308;
         }
 
         body[data-theme="dark"] {
@@ -243,8 +245,8 @@
         .marquee-track { display: flex; gap: 20px; width: max-content; animation: scroll 89s linear infinite; }
         .marquee-item {
             /* ADJUSTED FOR MORE RECTANGULAR LOOK */
-            width: 400px; 
-            height: 87px; 
+            width: 360px;  
+            height: 87px;  
             flex-shrink: 0;
             background: var(--glass-highlight); border-radius: 8px;
             border: 1px solid var(--glass-border); overflow: hidden;
@@ -445,6 +447,28 @@
             100% { background-color: #081122; }
         }
 
+        /* --- Custom Message Box --- */
+        #message-box {
+            position: fixed; bottom: 20px; right: 20px;
+            background: var(--accent-blue); color: #fff;
+            padding: 15px 25px; border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+            z-index: 9999; display: none;
+            transition: opacity 0.5s ease, background 0.3s ease;
+            max-width: 300px; font-weight: 600;
+        }
+
+        /* --- Custom Confirmation Modal --- */
+        .custom-modal-backdrop {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0, 0, 0, 0.5); z-index: 10000;
+            display: none; justify-content: center; align-items: center;
+        }
+        .custom-modal-content {
+            background: var(--glass-bg); padding: 30px; border-radius: 12px;
+            box-shadow: var(--shadow-card); max-width: 400px;
+            border: 1px solid var(--glass-border);
+        }
     </style>
 </head>
 <body>
@@ -467,6 +491,21 @@
     <div class="bg-orb orb-1"></div>
     <div class="bg-orb orb-2"></div>
     <canvas id="particle-canvas"></canvas>
+
+    <!-- CUSTOM MESSAGE BOX -->
+    <div id="message-box"></div>
+
+    <!-- CUSTOM CONFIRM MODAL -->
+    <div id="confirm-modal" class="custom-modal-backdrop">
+        <div class="custom-modal-content">
+            <div id="confirm-message" style="margin-bottom: 20px; font-weight: 600;"></div>
+            <div style="display: flex; justify-content: flex-end; gap: 10px;">
+                <button class="btn-ice" onclick="confirmCallback(false)">Cancel</button>
+                <button class="btn-ice" style="background: var(--warning-yellow); border-color: var(--warning-yellow);" onclick="confirmCallback(true)">Confirm</button>
+            </div>
+        </div>
+    </div>
+
 
     <!-- BOOT SCREEN -->
     <div id="boot-screen">
@@ -640,7 +679,7 @@
                                 <div style="font-weight: 600; font-size: 0.95rem; color: var(--text-primary);">blueiceyt</div>
                             </div>
                         </div>
-                        <button class="btn-ice" style="padding: 6px 12px; font-size: 0.75rem;" onclick="copyText('blueice#1234')">COPY</button>
+                        <button class="btn-ice" style="padding: 6px 12px; font-size: 0.75rem;" onclick="copyText('blueiceyt')">COPY</button>
                     </div>
 
                     <div style="background: var(--glass-highlight); padding: 15px; border-radius: 8px; margin-bottom: 30px; display: flex; justify-content: space-between; align-items: center; border: 1px solid var(--glass-border);">
@@ -712,7 +751,7 @@
                         
                         <!-- ADMIN ONLY: Upload Tool -->
                         <div id="admin-panel" style="display:none;">
-                            <button id="btn-admin-upload" class="btn-ice" style="width:100%; padding: 12px; margin-bottom:15px; border-color:#eab308; color:#eab308;" onclick="uploadStaticToFirebase()">
+                            <button id="btn-admin-upload" class="btn-ice" style="width:100%; padding: 12px; margin-bottom:15px; border-color:#eab308; color:#eab308;" onclick="confirmUpload()">
                                 ⚠️ ADMIN: Upload Static Data to Cloud
                             </button>
                         </div>
@@ -770,7 +809,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged, signInAnonymously, signInWithCustomToken, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-        import { getFirestore, collection, getDocs, addDoc, query, orderBy, doc, getDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getFirestore, collection, getDocs, addDoc, query, orderBy, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
         // ==========================================
         //  PASTE YOUR FIREBASE CONFIG HERE 👇
@@ -809,7 +848,7 @@
                     await signInWithCustomToken(auth, __initial_auth_token);
                 } else {
                     // Standard fallback: Anonymous auth ensures we have permissions to read public data
-                    await signInAnonymously(auth); 
+                    await signInAnonymously(auth);  
                 }
             } catch (e) {
                 console.warn("Auto-auth failed (Check if Anonymous Auth is enabled in Firebase Console):", e);
@@ -821,63 +860,71 @@
 
         // --- AUTH FUNCTIONS ---
         window.signInGoogle = async () => {
-            if (!auth) return alert("Please configure Firebase first!");
+            if (!auth) return window.showMessage("Please configure Firebase first!", true);
             const provider = new GoogleAuthProvider();
             try {
                 await signInWithPopup(auth, provider);
-                showPage('home');
-            } catch (error) { alert(error.message); }
+                window.showMessage("Signed in with Google!");
+                window.showPage('home');
+            } catch (error) { window.showMessage(error.message, true); }
         };
 
         window.signInEmail = async () => {
             if (!auth) {
                 // Fallback Simulation
                 window.currentUser = document.getElementById('login-email').value || "Guest";
-                updateUIForLogin(window.currentUser);
-                showPage('home');
+                window.updateUIForLogin(window.currentUser);
+                window.showMessage("Signed in as Guest (Offline Mode).");
+                window.showPage('home');
                 return;
             }
             const email = document.getElementById('login-email').value;
             const pass = document.getElementById('login-pass').value;
             try {
                 await signInWithEmailAndPassword(auth, email, pass);
-                showPage('home');
-            } catch (error) { alert(error.message); }
+                window.showMessage("Signed in!");
+                window.showPage('home');
+            } catch (error) { window.showMessage(error.message, true); }
         };
 
         window.signUpEmail = async () => {
-            if (!auth) return alert("Please configure Firebase first!");
+            if (!auth) return window.showMessage("Please configure Firebase first!", true);
             const email = document.getElementById('signup-email').value;
             const pass = document.getElementById('signup-pass').value;
             try {
                 await createUserWithEmailAndPassword(auth, email, pass);
-                showPage('home');
-            } catch (error) { alert(error.message); }
+                window.showMessage("Account created and signed in!");
+                window.showPage('home');
+            } catch (error) { window.showMessage(error.message, true); }
         };
 
         window.performLogout = async () => {
-            if (auth) await signOut(auth);
+            if (auth) {
+                await signOut(auth);
+                window.showMessage("Logged out successfully.");
+            }
             else {
                 window.currentUser = null;
-                updateUIForLogout();
+                window.updateUIForLogout();
+                window.showMessage("Logged out from guest session.");
             }
         };
 
         window.resetPassword = async () => {
-            if(!auth || !auth.currentUser) return alert("You must be logged in to reset password.");
+            if(!auth || !auth.currentUser) return window.showMessage("You must be logged in to reset password.", true);
             const email = auth.currentUser.email;
-            if(!email) return alert("No email found.");
+            if(!email) return window.showMessage("No email found.", true);
             
             // Firebase can only reset passwords for Email/Password users, not Google/Anonymous
             if (auth.currentUser.providerData.some(p => p.providerId === 'password')) {
                 try {
                     await sendPasswordResetEmail(auth, email);
-                    alert(`Password reset email sent to ${email}`);
+                    window.showMessage(`Password reset email sent to ${email}`);
                 } catch(e) {
-                    alert("Error sending email: " + e.message);
+                    window.showMessage("Error sending email: " + e.message, true);
                 }
             } else {
-                 alert("Password reset is only available for accounts created with Email/Password. Please manage your Google password directly.");
+                window.showMessage("Password reset is only available for accounts created with Email/Password.", true);
             }
         }
 
@@ -885,14 +932,14 @@
         window.loadDynamicContent = async () => {
             if (!db) {
                 console.log("Using static fallback data.");
-                renderProjects(window.staticProjectData);
-                renderBlogFeed(window.staticBlogPosts);
+                window.renderProjects(window.staticProjectData);
+                window.renderBlogFeed(window.staticBlogPosts);
                 return;
             }
 
             try {
                 // Projects
-                const projSnapshot = await getDocs(collection(db, "projects"));
+                const projSnapshot = await getDocs(query(collection(db, "projects")));
                 const projects = projSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 
                 // Blog Posts
@@ -900,20 +947,20 @@
                 const posts = blogSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
                 // If DB empty, fallback to static
-                if(projects.length === 0) renderProjects(window.staticProjectData);
-                else renderProjects(projects);
+                if(projects.length === 0) window.renderProjects(window.staticProjectData);
+                else window.renderProjects(projects);
 
-                if(posts.length === 0) renderBlogFeed(window.staticBlogPosts);
+                if(posts.length === 0) window.renderBlogFeed(window.staticBlogPosts);
                 else {
                     window.liveBlogPosts = posts; // Store for reader
-                    renderBlogFeed(posts);
+                    window.renderBlogFeed(posts);
                 }
 
             } catch (e) {
                 console.error("Error fetching data:", e);
                 // Fallback
-                renderProjects(window.staticProjectData);
-                renderBlogFeed(window.staticBlogPosts);
+                window.renderProjects(window.staticProjectData);
+                window.renderBlogFeed(window.staticBlogPosts);
             }
         };
         
@@ -940,38 +987,48 @@
         }
 
         // --- ADMIN TOOL: UPLOAD STATIC TO DB ---
-        window.uploadStaticToFirebase = async () => {
-            if (!db) return alert("Database not connected.");
-            if (!confirm("This will upload all static blogs and projects to your database. Continue?")) return;
-
+        window.module_uploadStaticToFirebase = async () => {
+            if (!db) return window.showMessage("Database not connected.", true);
+            
             try {
                 // Upload Projects
                 for (const p of window.staticProjectData) {
-                    await addDoc(collection(db, "projects"), p);
+                    await setDoc(doc(collection(db, "projects")), p); // Use setDoc to create docs with random IDs
                 }
                 // Upload Blogs
                 for (const b of window.staticBlogPosts) {
                     // Remove ID (let Firestore gen it) and comments (optional)
-                    const { id, ...postData } = b; 
-                    await addDoc(collection(db, "posts"), postData);
+                    const { id, comments, ...postData } = b;  
+                    await setDoc(doc(collection(db, "posts")), postData);
                 }
-                alert("Upload Complete! Refresh the page to see live data.");
+                window.showMessage("Upload Complete! Refresh the page to see live data.", false);
             } catch (e) {
-                alert("Error uploading: " + e.message);
+                window.showMessage("Error uploading: " + e.message, true);
             }
         };
+
+        // --- ADMIN CONFIRM WRAPPER (Replaces old confirm()) ---
+        window.confirmUpload = () => {
+            window.showConfirmation("This will upload all static blogs and projects to your database. Continue?", async (result) => {
+                if (result) {
+                    await window.module_uploadStaticToFirebase();
+                } else {
+                    window.showMessage("Upload cancelled.", true);
+                }
+            });
+        }
         
         // --- COMMENT SUBMISSION (FIXED TO SAVE TO FIREBASE) ---
         window.module_submitComment = async (txt) => {
-            if (!db) return alert("Database not connected. Comment not saved.");
-            if (!window.currentUser || window.authUser.isAnonymous) return alert("Please log in with a registered account to post comments.");
-            if (!currentPostId || currentPostId.startsWith('static_')) return alert("Cannot comment on static posts. Please upload posts to Firebase first.");
+            if (!db) return window.showMessage("Database not connected. Comment not saved.", true);
+            if (!window.currentUser || window.authUser.isAnonymous) return window.showMessage("Please log in with a registered account to post comments.", true);
+            if (!window.currentPostId || window.currentPostId.startsWith('static_')) return window.showMessage("Cannot comment on static posts. Please upload posts to Firebase first.", true);
 
             const text = txt.trim();
             if (!text) return;
 
             try {
-                const postRef = doc(db, "posts", currentPostId);
+                const postRef = doc(db, "posts", window.currentPostId);
                 const commentsCollectionRef = collection(postRef, "comments");
 
                 await addDoc(commentsCollectionRef, {
@@ -985,16 +1042,16 @@
                 
                 // --- INSTANT UI UPDATE ---
                 // Fetch and re-render the comments immediately to show the new one
-                const freshComments = await window.fetchComments(currentPostId);
-                const post = window.liveBlogPosts.find(p => p.id === currentPostId);
+                const freshComments = await window.fetchComments(window.currentPostId);
+                const post = window.liveBlogPosts.find(p => p.id === window.currentPostId);
                 if(post) post.comments = freshComments; // Update the stored version
                 window.renderComments(post);
 
-                alert("Comment posted successfully!");
+                window.showMessage("Comment posted successfully!");
                 
             } catch (e) {
                 console.error("Error saving comment:", e);
-                alert("Failed to save comment. Check Firebase rules to allow writes to posts/{postId}/comments.");
+                window.showMessage("Failed to save comment. Check Firebase rules to allow writes to posts/{postId}/comments.", true);
             }
         };
 
@@ -1005,17 +1062,17 @@
                     const name = user.displayName || user.email.split('@')[0];
                     window.currentUser = name;
                     // Expose auth user for dashboard logic
-                    window.authUser = user; 
-                    updateUIForLogin(user.email);
+                    window.authUser = user;  
+                    window.updateUIForLogin(user.email);
                 } else {
                     window.currentUser = null;
                     window.authUser = null;
-                    updateUIForLogout();
+                    window.updateUIForLogout();
                 }
             });
         }
 
-        function updateUIForLogin(email) {
+        window.updateUIForLogin = (email) => {
             document.getElementById('nav-login-btn').innerText = "Account";
             document.getElementById('view-login').style.display = 'none';
             document.getElementById('view-signup').style.display = 'none';
@@ -1034,7 +1091,7 @@
             if(window.updateCommentFormVisibility) window.updateCommentFormVisibility();
         }
 
-        function updateUIForLogout() {
+        window.updateUIForLogout = () => {
             document.getElementById('nav-login-btn').innerText = "Login";
             document.getElementById('view-login').style.display = 'block';
             document.getElementById('view-profile').style.display = 'none';
@@ -1047,12 +1104,41 @@
 
     <!-- STANDARD JS LOGIC -->
     <script>
-        // --- 1. GLOBAL STATE & STATIC DATA ---
-        let currentPostId = null;
+        // --- 1. GLOBAL STATE & UTILITIES ---
+        window.currentPostId = null; // Changed to window property for module access
         window.liveBlogPosts = []; // Will hold DB posts
+        let globalConfirmCallback = null;
 
         // Allowed paths for URL routing
         const VALID_ROUTES = ['home', 'projects', 'blog', 'contact', 'login'];
+
+        // Message/Alert replacement
+        window.showMessage = (text, isError = false) => {
+            const box = document.getElementById('message-box');
+            box.innerText = text;
+            box.style.background = isError ? 'var(--error-red)' : 'var(--accent-blue)';
+            box.style.display = 'block';
+            box.style.opacity = '1';
+            setTimeout(() => {
+                box.style.opacity = '0';
+                setTimeout(() => box.style.display = 'none', 500);
+            }, 3000);
+        }
+
+        // Confirm replacement
+        window.showConfirmation = (message, callback) => {
+            globalConfirmCallback = callback;
+            document.getElementById('confirm-message').innerText = message;
+            document.getElementById('confirm-modal').style.display = 'flex';
+        }
+
+        window.confirmCallback = (result) => {
+            document.getElementById('confirm-modal').style.display = 'none';
+            if (globalConfirmCallback) {
+                globalConfirmCallback(result);
+            }
+            globalConfirmCallback = null;
+        }
 
         // STATIC FALLBACK DATA (Used if DB is empty or offline)
         window.staticProjectData = [
@@ -1069,7 +1155,7 @@
                 category: "Engineering",
                 excerpt: "Stripping back aesthetics for cleaner looks.",
                 image: "https://placehold.co/400x350/0891b2/fff?text=Design+Post",
-                content: `<p>In a world of maximalist design...</p>`, 
+                content: `<p>In a world of maximalist design, sometimes the best solution is to strip everything back to the essentials. This principle is especially true in web development, where speed and accessibility are paramount. By favoring clean lines and high contrast, we ensure the user's focus remains on the content. Less glitter, more meaning.</p><h3>Why Less is More</h3><p>Minimalist interfaces lead to faster load times and reduced cognitive load for the user. Every element must earn its place on the screen. We focus on utility over decoration, making every interaction intuitive and efficient.</p>`,  
                 comments: []
             },
             {
@@ -1079,7 +1165,7 @@
                 category: "Personal",
                 excerpt: "Deep blue gradients in UI design.",
                 image: "https://placehold.co/400x350/020617/fff?text=Dark+Mode+Vibe",
-                content: `<p>There is something inherently calming...</p>`,
+                content: `<p>There is something inherently calming about the void aesthetic, particularly when using deep, saturated blues. It provides a visual depth that traditional dark modes often lack. This design choice is not just about reducing eye strain; it's about creating an atmosphere.</p><h3>Creating Depth</h3><p>We use subtle ambient light effects and blurred orbs (as seen in the background of this site!) to provide structure without being distracting. The challenge is balancing the darkness so that text remains crisp and readable, especially on high-resolution screens.</p>`,
                 comments: []
             }
         ];
@@ -1111,8 +1197,6 @@
             }
         }
 
-        // Initialize button icon on load is handled by the immediate script block now.
-
         function showPage(id, updateHistory = true) {
             
             // Validate and determine the final route ID
@@ -1128,6 +1212,7 @@
 
             window.scrollTo({top:0, behavior:'smooth'});
             document.querySelectorAll('.page-section').forEach(p => p.classList.remove('active'));
+            // Delay to allow CSS animation to trigger properly
             setTimeout(() => document.getElementById(routeId).classList.add('active'), 50);
             
             document.querySelectorAll('.nav-links a').forEach(a => a.classList.remove('active'));
@@ -1148,39 +1233,53 @@
             }
         }
 
-// Function run on initial load or browser navigation (back/forward)
-function handleInitialRoute() {
-    // *** NEW: Check for redirected path from 404.html ***
-    const redirectedPath = sessionStorage.getItem('redirectPath');
-    sessionStorage.removeItem('redirectPath'); // Clear it immediately
+        // Function run on initial load or browser navigation (back/forward)
+        function handleInitialRoute() {
+            // *** FIX: Check for redirected path from 404.html first ***
+            const redirectedPath = sessionStorage.getItem('redirectPath');
+            sessionStorage.removeItem('redirectPath'); // Clear it immediately
 
-    const path = redirectedPath ? redirectedPath.substring(1) : window.location.pathname.substring(1);
-    
-    // Original logic:
-    const pathSegments = path.split('/');
-    let routeId = pathSegments[0] || 'home';
-    
-    // ... rest of the function (no changes needed below here)
-    if (VALID_ROUTES.includes(routeId)) {
-        showPage(routeId, false); // Load page but don't add to history
+            // Use redirected path if present, otherwise use current window location
+            let path = redirectedPath ? redirectedPath.substring(1) : window.location.pathname.substring(1);
+            
+            // Handle cases where path is a GitHub project sub-directory path (e.g. /my-repo/projects)
+            // This logic is safer if the site is not hosted on a custom domain/root user page
+            if (path.includes('/') && path.split('/').length > 1) {
+                 // Assumes first segment is the repo name if not in a user/org root repo
+                 // For now, we rely on the host handling the path correctly after the root is loaded.
+            }
 
-        // Handle deep link into blog post (e.g., /blog/post_id)
-        if (routeId === 'blog' && pathSegments.length > 1 && pathSegments[1]) {
-            // Open the specific post if an ID is present
-            openReader(pathSegments[1]);
+            const pathSegments = path.split('/');
+            let routeId = pathSegments[0] || 'home';
+            
+            if (VALID_ROUTES.includes(routeId)) {
+                showPage(routeId, false); // Load page but don't add to history
+
+                // Handle deep link into blog post (e.g., /blog/post_id)
+                if (routeId === 'blog' && pathSegments.length > 1 && pathSegments[1]) {
+                    // Open the specific post if an ID is present
+                    openReader(pathSegments[1]);  
+                }
+            } else {
+                // If the route is not valid (e.g., a file that doesn't exist, or just the repo name)
+                showPage('home', false); 
+            }
         }
-    } else {
-        showPage('home', false); // Default to home if route is invalid
-    }
-}
+
         // Listen for browser back/forward buttons
         window.addEventListener('popstate', (e) => {
-             handleInitialRoute();
+              handleInitialRoute();
         });
 
 
         function copyText(text) {
-            navigator.clipboard.writeText(text).then(() => alert("Copied!")).catch(() => alert("Manual Copy: " + text));
+            // Using modern clipboard API which works on HTTPS/secure contexts
+            navigator.clipboard.writeText(text)
+                .then(() => window.showMessage("Copied!"))
+                .catch(() => {
+                    // Fallback to manual copy (or use execCommand, but it's deprecated)
+                    window.showMessage("Manual Copy: " + text, true);
+                });
         }
 
         function calculateReadStats(htmlContent) {
@@ -1191,7 +1290,7 @@ function handleInitialRoute() {
         }
 
         // --- 3. RENDERERS ---
-        function renderProjects(projects) {
+        window.renderProjects = (projects) => {
             const grid = document.getElementById('projects-grid');
             grid.innerHTML = "";
             projects.forEach(p => {
@@ -1207,12 +1306,12 @@ function handleInitialRoute() {
             const track = document.getElementById('marquee-track');
             track.innerHTML = "";
             [...marqueeImages, ...marqueeImages].forEach((img, i) => {
-                const fallback = `data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyODAiIGhlaWdodD0iMTIwIiB2aWV3Qm94PSIwIDAgMjgwIDEyMCI+PHJlY3Qgd2lkdGg9IjI4MCIgaGVpZ2h0PSIxMjAiIGZpbGw9IiMzMzMiLz48dGV4dCB4PSI1MCUiIHk9IjUwJSIgZG9taW5hbnQtYmFzZWxpbmU9Im1pZGRsZSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1zaXplPSIyMCIgZmlsbD0iI2ZmZiI+SW1hZ2UgJHtpKzF9PC90ZXh0Pjwvc3ZnPg==`;
+                const fallback = `data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyODAiIGhlaWdodD0iMTIwIiB2aWV3Qm94PSIwIDAgMjgwIDEyMCI+PHJlY3Qgd2lkdGg9IjI4MCIgaGVpZ2h0PSIxMjAiIGZpbGw9IiMzMzMiLz48dGV4dCB4PSI1MCUiIHk9IjUwJSIgZG9taW5hbnQtYmFzZWxpbmU9Im1pZGRsZSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1zaXplPSIyMCIgZmlsbD0iI2ZmZiI+SW1hZ2UgI2ZhbGxiYWNrPC90ZXh0Pjwvc3ZnPg==`;
                 track.innerHTML += `<div class="marquee-item"><img src="${img}" onerror="this.src='${fallback}'"></div>`;
             });
         }
 
-        function renderBlogFeed(posts) {
+        window.renderBlogFeed = (posts) => {
             const list = document.getElementById('blog-list');
             list.innerHTML = "";
             posts.forEach(p => {
@@ -1240,7 +1339,7 @@ function handleInitialRoute() {
 
         // --- 4. READER & COMMENTS ---
         async function openReader(id) {
-            currentPostId = id;
+            window.currentPostId = id;
             
             let post = window.liveBlogPosts.find(p => p.id === id) || window.staticBlogPosts.find(p => p.id === id);
             
@@ -1268,7 +1367,7 @@ function handleInitialRoute() {
             }
             
             renderComments(post);
-            window.updateCommentFormVisibility(); 
+            window.updateCommentFormVisibility();  
             updateSaveButtonState(); // Update save button state on open
 
             document.getElementById('blog-list').style.display = 'none';
@@ -1282,7 +1381,7 @@ function handleInitialRoute() {
         function closeReader() {
             document.getElementById('blog-reader').style.display = 'none';
             document.getElementById('blog-list').style.display = 'block';
-            currentPostId = null;
+            window.currentPostId = null;
             // When closing the reader, make sure to hide dashboard content
             const dashboardContent = document.getElementById('dashboard-content');
             if (dashboardContent) dashboardContent.style.display = 'none';
@@ -1316,7 +1415,7 @@ function handleInitialRoute() {
         window.updateCommentFormVisibility = () => {
             const form = document.getElementById('active-comment-form');
             const prompt = document.getElementById('login-prompt');
-            if (window.currentUser) {
+            if (window.currentUser && window.authUser && !window.authUser.isAnonymous) {
                 form.style.display = 'block';
                 prompt.style.display = 'none';
             } else {
@@ -1332,7 +1431,7 @@ function handleInitialRoute() {
             if (window.module_submitComment) {
                 await window.module_submitComment(txt);
             } else {
-                alert(`Cannot save comment. Firebase Module is not loaded or configured.`);
+                window.showMessage(`Cannot save comment. Firebase Module is not loaded or configured.`, true);
                 document.getElementById('new-comment-text').value = "";
             }
         };
@@ -1340,16 +1439,16 @@ function handleInitialRoute() {
         // --- 5. DASHBOARD & SAVING LOGIC ---
         
         function toggleSavePost() {
-            if(!currentPostId) return;
+            if(!window.currentPostId) return;
             let saved = JSON.parse(localStorage.getItem('blueice_saved')) || [];
-            const index = saved.indexOf(currentPostId);
+            const index = saved.indexOf(window.currentPostId);
             
             if(index > -1) {
                 saved.splice(index, 1);
-                alert("Removed from Saved Posts.");
+                window.showMessage("Removed from Saved Posts.");
             } else {
-                saved.push(currentPostId);
-                alert("Post Saved!");
+                saved.push(window.currentPostId);
+                window.showMessage("Post Saved!");
             }
             localStorage.setItem('blueice_saved', JSON.stringify(saved));
             updateSaveButtonState();
@@ -1357,10 +1456,10 @@ function handleInitialRoute() {
 
         function updateSaveButtonState() {
             const btn = document.getElementById('btn-save-post');
-            if(!currentPostId) return;
+            if(!window.currentPostId) return;
             let saved = JSON.parse(localStorage.getItem('blueice_saved')) || [];
             
-            if(saved.includes(currentPostId)) {
+            if(saved.includes(window.currentPostId)) {
                 btn.innerHTML = "❤️ Saved";
                 btn.style.borderColor = "var(--accent-cyan)";
                 btn.style.color = "var(--accent-cyan)";
@@ -1394,7 +1493,8 @@ function handleInitialRoute() {
                 uniquePosts.forEach(post => {
                     if(post.comments) {
                         post.comments.forEach(c => {
-                            if(c.user === window.currentUser) {
+                            // Using the email check as a proxy for identifying user's comments
+                            if(window.authUser && c.userId === window.authUser.uid) { 
                                 myComments.push({ postTitle: post.title, text: c.text, postId: post.id });
                             }
                         });
@@ -1445,36 +1545,35 @@ function handleInitialRoute() {
             const bar = document.getElementById('boot-bar'); let w = 0;
             const int = setInterval(() => {
                 w += Math.random() * 8; if(w > 100) w = 100; bar.style.width = w + "%";
-                if(w === 100) { 
-                    clearInterval(int); 
-                    setTimeout(() => { 
-                        document.getElementById('boot-screen').style.opacity = '0'; 
-                        setTimeout(() => { 
-                            document.getElementById('boot-screen').style.display = 'none'; 
-                            typeWriter(); 
-                        }, 800); 
-                    }, 500); 
+                if(w === 100) {  
+                    clearInterval(int);  
+                    setTimeout(() => {  
+                        document.getElementById('boot-screen').style.opacity = '0';  
+                        setTimeout(() => {  
+                            document.getElementById('boot-screen').style.display = 'none';  
+                            typeWriter();  
+                        }, 800);  
+                    }, 500);  
                 }
             }, 50);
 
             // DATA LOADING is handled by initApp in the module script above
             renderMarquee();
             
-            // REMOVED handleInitialRoute() from here. It now runs after typeWriter() finishes.
         });
 
         // Typewriter & Particles
         const txt = "Hi, I'm Archan."; let ti = 0;
-        function typeWriter() { 
-            const el = document.getElementById('typewriter'); 
-            if(ti < txt.length && el) { 
-                el.innerHTML += txt.charAt(ti); 
-                ti++; 
-                setTimeout(typeWriter, 100); 
+        function typeWriter() {  
+            const el = document.getElementById('typewriter');  
+            if(ti < txt.length && el) {  
+                el.innerHTML += txt.charAt(ti);  
+                ti++;  
+                setTimeout(typeWriter, 100);  
             } else {
                 // FIXED: Call router only AFTER boot sequence is complete
                 handleInitialRoute();
-            } 
+            }  
         }
         
         const canvas = document.getElementById('particle-canvas');
@@ -1509,7 +1608,7 @@ function handleInitialRoute() {
                 const rect = card.getBoundingClientRect();
                 const x = e.clientX - rect.left; const y = e.clientY - rect.top;
                 if (x > -50 && x < rect.width + 50 && y > -50 && y < rect.height + 50) {
-                    const rotateX = ((y - rect.height/2) / 30) * -1; 
+                    const rotateX = ((y - rect.height/2) / 30) * -1;  
                     const rotateY = (x - rect.width/2) / 30;
                     card.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg)`;
                 } else { card.style.transform = 'perspective(1000px) rotateX(0) rotateY(0)'; }
