@@ -4,17 +4,17 @@
     <meta charset="utf-8">
     <title>Page Not Found</title>
     <script>
-        // Get the requested path from the URL
+        // Get the path the user tried to access (e.g., /projects)
         var path = window.location.pathname;
         
-        // Save the path to session storage to be picked up by index.html
+        // Store the path temporarily in session storage
         sessionStorage.setItem('redirectPath', path);
 
-        // Redirect all 404s back to the root index.html
+        // Force a redirect to the root index.html, where the JS router will pick up the path.
         window.location.replace('/');
     </script>
 </head>
 <body>
-    <p>Loading...</p>
+    <p>Loading application...</p>
 </body>
 </html>
