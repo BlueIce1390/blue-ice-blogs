@@ -1250,7 +1250,15 @@
             }
 
             const pathSegments = path.split('/');
-            let routeId = pathSegments[0] || 'home';
+            let routeId;
+            
+            // --- DEFENSIVE ROUTE RESOLUTION FIX ---
+            // If the path is empty or equivalent to the root path (""), explicitly set routeId to 'home'.
+            if (path === "" || path === "/") {
+                routeId = 'home';
+            } else {
+                routeId = pathSegments[0];
+            }
             
             if (VALID_ROUTES.includes(routeId)) {
                 showPage(routeId, false); // Load page but don't add to history
