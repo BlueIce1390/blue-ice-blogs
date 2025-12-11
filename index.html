@@ -244,7 +244,7 @@
         .marquee-item {
             /* ADJUSTED FOR MORE RECTANGULAR LOOK */
             width: 360px; 
-            height: 90px; 
+            height: 87px; 
             flex-shrink: 0;
             background: var(--glass-highlight); border-radius: 8px;
             border: 1px solid var(--glass-border); overflow: hidden;
@@ -1443,21 +1443,33 @@
                     clearInterval(int); 
                     setTimeout(() => { 
                         document.getElementById('boot-screen').style.opacity = '0'; 
-                        setTimeout(() => { document.getElementById('boot-screen').style.display = 'none'; typeWriter(); }, 800); 
+                        setTimeout(() => { 
+                            document.getElementById('boot-screen').style.display = 'none'; 
+                            typeWriter(); 
+                        }, 800); 
                     }, 500); 
                 }
             }, 50);
 
-            // DATA LOADING is now handled by initApp in the module script above
+            // DATA LOADING is handled by initApp in the module script above
             renderMarquee();
             
-            // Check the current URL path and load the correct section
-            handleInitialRoute();
+            // REMOVED handleInitialRoute() from here. It now runs after typeWriter() finishes.
         });
 
         // Typewriter & Particles
         const txt = "Hi, I'm Archan."; let ti = 0;
-        function typeWriter() { const el = document.getElementById('typewriter'); if(ti < txt.length && el) { el.innerHTML += txt.charAt(ti); ti++; setTimeout(typeWriter, 100); } }
+        function typeWriter() { 
+            const el = document.getElementById('typewriter'); 
+            if(ti < txt.length && el) { 
+                el.innerHTML += txt.charAt(ti); 
+                ti++; 
+                setTimeout(typeWriter, 100); 
+            } else {
+                // FIXED: Call router only AFTER boot sequence is complete
+                handleInitialRoute();
+            } 
+        }
         
         const canvas = document.getElementById('particle-canvas');
         const ctx = canvas.getContext('2d');
