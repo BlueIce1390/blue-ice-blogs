@@ -1,27 +1,20 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="utf-8">
-  <title>Routing...</title>
-  <script>
-    // This script runs when GitHub Pages encounters a path that isn't a physical file (like /blog or /projects).
-    // It tricks the browser into correctly loading index.html while keeping the nice URL.
-    (function() {
-      // Get the path that caused the 404 error (e.g., /blog or /projects)
-      var path = window.location.pathname;
+    <meta charset="utf-8">
+    <title>Page Not Found</title>
+    <script>
+        // Get the requested path from the URL
+        var path = window.location.pathname;
+        
+        // Save the path to session storage to be picked up by index.html
+        sessionStorage.setItem('redirectPath', path);
 
-      // Check if the current environment is GitHub Pages
-      if (path.indexOf('404.html') === -1) {
-        // Redirect to the root index.html file, but keep the current path in history
-        history.replaceState(null, null, path);
-      } else {
-        // If the path is /repo/404.html, just redirect to the root URL
+        // Redirect all 404s back to the root index.html
         window.location.replace('/');
-      }
-    })();
-  </script>
+    </script>
 </head>
 <body>
-  <p>Loading...</p>
+    <p>Loading...</p>
 </body>
 </html>
