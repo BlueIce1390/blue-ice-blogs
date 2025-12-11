@@ -243,8 +243,8 @@
         .marquee-track { display: flex; gap: 20px; width: max-content; animation: scroll 89s linear infinite; }
         .marquee-item {
             /* ADJUSTED FOR MORE RECTANGULAR LOOK */
-            width:  800px; 
-            height: 160px; 
+            width: 280px; 
+            height: 120px; 
             flex-shrink: 0;
             background: var(--glass-highlight); border-radius: 8px;
             border: 1px solid var(--glass-border); overflow: hidden;
@@ -667,7 +667,7 @@
             <!-- LOGIN PAGE -->
             <div id="login" class="page-section">
                 <div class="glass tilt-card login-card">
-                    <h2 style="margin-bottom: 20px; color: var(--text-primary);">Login or Sign up</h2>
+                    <h2 style="margin-bottom: 20px; color: var(--text-primary);">System Access</h2>
                     
                     <!-- LOGIN VIEW -->
                     <div id="view-login">
@@ -746,7 +746,7 @@
                     <img id="char-avatar" src="hairflow.gif" alt="Status Avatar" onerror="this.onerror=null;this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiB2aWV3Qm94PSIwIDAgMTAwIDEwMCI+PHJlY3Qgd2lkdGg9IjEwMCIgaGVpZ2h0PSIxMCIiIGZpbGw9IiMzMzMiLz48dGV4dCB4PSI1MCUiIHk9IjUwJSIgZG9taW5hbnQtYmFzZWxpbmU9Im1pZGRsZSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1zaXplPSI1MCI+8J+RgjwvdGV4dD48L3N2Zz4=';">
                 </div>
                 <div style="margin-top: 15px; font-size: 0.85rem; color: var(--text-secondary); text-align: center;">
-                    Yoshio Kabayashi from <em>Trickster</em>
+                    Admin is: <span style="color: #4ade80;">Online</span>
                 </div>
             </div>
             <div class="glass tilt-card sidebar-widget">
@@ -754,7 +754,6 @@
                 <ul class="pixel-list">
                     <li onclick="showPage('projects')"><span class="px-icon"></span> My Works</li>
                     <li onclick="showPage('blog')"><span class="px-icon"></span> Journal</li>
-                    <li><span class="px-icon"></span> <a href="https://discord.gg/FC5E9WJRzE" target="_blank">Discord Server</a></li>
                 </ul>
             </div>
         </aside>
@@ -927,7 +926,7 @@
                 
                 return commentsSnapshot.docs.map(doc => {
                     const data = doc.data();
-                    // Simple formatting of the timestamp for display
+                    // Format timestamp
                     const time = data.timestamp ? new Date(data.timestamp).toLocaleString() : 'N/A';
                     return { ...data, time: time };
                 });
@@ -993,7 +992,7 @@
                 
             } catch (e) {
                 console.error("Error saving comment:", e);
-                alert("Failed to save comment. Check Firebase rules (must allow 'create' for logged-in users).");
+                alert("Failed to save comment. Check Firebase rules to allow writes to posts/{postId}/comments.");
             }
         };
 
@@ -1049,6 +1048,9 @@
         // --- 1. GLOBAL STATE & STATIC DATA ---
         let currentPostId = null;
         window.liveBlogPosts = []; // Will hold DB posts
+        
+        // Allowed paths for URL routing
+        const VALID_ROUTES = ['home', 'projects', 'blog', 'contact', 'login'];
 
         // STATIC FALLBACK DATA (Used if DB is empty or offline)
         window.staticProjectData = [
@@ -1107,16 +1109,65 @@
             }
         }
 
-        // Initialize button icon on load is handled by the immediate script block now.
+        // --- URL ROUTING LOGIC (FIXED) ---
+        function showPage(id, updateHistory = true) {
+            
+            // Validate and determine the final route ID
+            let routeId = id;
+            if (!VALID_ROUTES.includes(id)) {
+                 // Check if the path is /blog/postID and navigate to blog, handling post view internally later
+                const pathParts = id.split('/');
+                if (pathParts.length > 1 && pathParts[0] === 'blog') {
+                    routeId = 'blog';
+                } else {
+                    routeId = 'home';
+                }
+            }
 
-        function showPage(id) {
             window.scrollTo({top:0, behavior:'smooth'});
             document.querySelectorAll('.page-section').forEach(p => p.classList.remove('active'));
-            setTimeout(() => document.getElementById(id).classList.add('active'), 50);
+            setTimeout(() => document.getElementById(routeId).classList.add('active'), 50);
+            
             document.querySelectorAll('.nav-links a').forEach(a => a.classList.remove('active'));
-            const link = document.getElementById('nav-'+id);
+            const link = document.getElementById('nav-'+routeId);
             if(link) link.classList.add('active');
+
+            // Update URL using History API
+            if (updateHistory) {
+                let path = (id === 'home' ? '/' : '/' + id);
+                history.pushState({ id: routeId }, '', path);
+            }
+            
+            // Ensure the reader view is closed unless we are navigating to the main 'blog' page
+            if (routeId !== 'blog') {
+                 closeReader();
+            }
         }
+
+        // Function run on initial load or browser navigation (back/forward)
+        function handleInitialRoute() {
+            const path = window.location.pathname.substring(1); // Remove leading '/'
+            const pathSegments = path.split('/');
+            let routeId = pathSegments[0] || 'home';
+            
+            if (VALID_ROUTES.includes(routeId)) {
+                showPage(routeId, false); // Load page but don't add to history
+
+                // Handle deep link into blog post (e.g., /blog/post_id)
+                if (routeId === 'blog' && pathSegments.length > 1 && pathSegments[1]) {
+                    // Open the specific post if an ID is present
+                    openReader(pathSegments[1]); 
+                }
+            } else {
+                showPage('home', false); // Default to home if route is invalid
+            }
+        }
+
+        // Listen for browser back/forward buttons
+        window.addEventListener('popstate', (e) => {
+             handleInitialRoute();
+        });
+
 
         function copyText(text) {
             navigator.clipboard.writeText(text).then(() => alert("Copied!")).catch(() => alert("Manual Copy: " + text));
@@ -1212,6 +1263,9 @@
 
             document.getElementById('blog-list').style.display = 'none';
             document.getElementById('blog-reader').style.display = 'block';
+            
+            // Update URL for deep linking
+            history.pushState({ id: 'blog', postId: id }, '', '/blog/' + id);
             document.getElementById('blog').scrollIntoView({behavior: 'smooth'});
         }
 
@@ -1222,6 +1276,9 @@
             // When closing the reader, make sure to hide dashboard content
             const dashboardContent = document.getElementById('dashboard-content');
             if (dashboardContent) dashboardContent.style.display = 'none';
+            
+            // Update URL back to /blog
+            history.pushState({ id: 'blog' }, '', '/blog');
         }
 
         function renderComments(post) {
@@ -1389,6 +1446,9 @@
 
             // DATA LOADING is now handled by initApp in the module script above
             renderMarquee();
+            
+            // Check the current URL path and load the correct section
+            handleInitialRoute();
         });
 
         // Typewriter & Particles
