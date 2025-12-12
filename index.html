@@ -844,6 +844,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged, signInAnonymously, signInWithCustomToken, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        // IMPORT FIX: Added `setDoc`
         import { getFirestore, collection, getDocs, addDoc, query, orderBy, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
         // ==========================================
@@ -1021,22 +1022,31 @@
             }
         }
 
-        // --- ADMIN TOOL: UPLOAD STATIC TO DB ---
+        // --- ADMIN TOOL: UPLOAD STATIC TO DB (FIXED FOR UPDATES) ---
         window.module_uploadStaticToFirebase = async () => {
             if (!db) return window.showMessage("Database not connected.", true);
             
             try {
-                // Upload Projects
+                let uploadCount = 0;
+
+                // 1. Upload/Update Projects (Using title as document ID)
                 for (const p of window.staticProjectData) {
-                    await setDoc(doc(collection(db, "projects")), p); // Use setDoc to create docs with random IDs
+                    const docId = p.title.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
+                    // setDoc with merge: true updates existing document or creates new one
+                    await setDoc(doc(db, "projects", docId), p, { merge: true }); 
+                    uploadCount++;
                 }
-                // Upload Blogs
+
+                // 2. Upload/Update Blogs (Using the explicit 'id' field as document ID)
                 for (const b of window.staticBlogPosts) {
-                    // Remove ID (let Firestore gen it) and comments (optional)
+                    if (!b.id) continue; // Skip posts without an explicit ID
                     const { id, comments, ...postData } = b;  
-                    await setDoc(doc(collection(db, "posts")), postData);
+                    // Use the post ID as the document ID
+                    await setDoc(doc(db, "posts", id), postData, { merge: true }); 
+                    uploadCount++;
                 }
-                window.showMessage("Upload Complete! Refresh the page to see live data.", false);
+
+                window.showMessage(`Database Sync Complete! (${uploadCount} items uploaded/updated). Please refresh the page to load the live data.`, false);
             } catch (e) {
                 window.showMessage("Error uploading: " + e.message, true);
             }
@@ -1044,7 +1054,7 @@
 
         // --- ADMIN CONFIRM WRAPPER (Replaces old confirm()) ---
         window.confirmUpload = () => {
-            window.showConfirmation("This will upload all static blogs and projects to your database. Continue?", async (result) => {
+            window.showConfirmation("This will upload all static blogs and projects to your database, updating existing entries with matching IDs. Continue?", async (result) => {
                 if (result) {
                     await window.module_uploadStaticToFirebase();
                 } else {
@@ -1457,7 +1467,7 @@ My next big focus will be on the 'Creative' video idea outlined in my previous p
             const track = document.getElementById('marquee-track');
             track.innerHTML = "";
             [...marqueeImages, ...marqueeImages].forEach((img, i) => {
-                const fallback = `data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyODAiIGhlaWdodD0iMTIwIiB2aWV3Qm94PSIwIDAgMjgwIDEyMCI+PHJlY3Qgd2lkdGg9IjI4MCIgaGVpZ2h0PSIxMjAiIGZpbGw9IiMzMzMiLz48dGV4dCB4PSI1MCUiIHk9IjUwJSIgZG9taW5hbnQtYmFzZWxpbmU9Im1pZGRsZSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1zaXplPSIyMCIgZmlsbD0iI2ZmZiI+SW1hZ2UgI2ZhbGxiYWNrPC90ZXh0Pjwvc3ZnPg==`;
+                const fallback = `data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyODAiIGhlaWdodD0iMTIwIiB2aWV3Qm94PSIwIDAgMjgwIDEyMCI+PHJlY3Qgd2lkdGg9IjI4MCIgaGVpZ2h0PSIxMjAiIGZpbGw9IiMzMzMiLz48dGV4dCB4PSI1MCUiIHk9IjUwJSIgZG9taW5hbnQtYmFzZWxpbmU9Im1pZGRsZSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1zaXplPSIyMCIgZmlsbD0iI2ZmZiI+SW1hZ2UgI2ZhbGbiYWNrPC90ZXh0Pjwvc3ZnPg==`;
                 track.innerHTML += `<div class="marquee-item"><img src="${img}" onerror="this.src='${fallback}'"></div>`;
             });
         }
