@@ -1178,9 +1178,46 @@
         // STATIC FALLBACK DATA (Used if DB is empty or offline)
         window.staticProjectData = [
             { title: "Neon Dashboard UI Demo", description: "Data visualization concept.", videoID: "Qd974r58B1s" },
+            { title: "Synth Wave Audio Engine", description: "Browser-based music creation.", videoID: "pW_S40R47g4" },
+            { title: "Adaptive Portfolio Design", description: "Responsive mobile testing.", videoID: "6I-9V2Q4vW8" }
         ];
 
         window.staticBlogPosts = [
+            // --- NEW POST TEMPLATE (COPY ME!) ---
+            {
+                id: "static_3", // ⬅️ CHANGE THIS ID (e.g., to static_4, static_5, etc.)
+                title: "My Next Great Video Idea", 
+                date: "2026-01-01", 
+                category: "Creative", // CHANGE ME
+                excerpt: "Planning out the script and visuals for the upcoming video essay.", // CHANGE ME
+                
+                // 1. COVER IMAGE: Paste a direct image link here (removes emoji icon in blog list and sets header image in reader)
+                image: "https://placehold.co/600x400/22d3ee/020617?text=VIDEO+PLANNING", 
+                
+                // 2. CONTENT: Use Markdown inside these backticks
+                content: `
+# Video Planning: The Script Breakdown
+
+This is where I map out the structure for my upcoming video essay. I prefer using **Markdown** because it lets me focus on the ideas without worrying about HTML tags.
+
+## The Three Core Segments
+
+I'll break the video into three parts:
+
+1.  **Introduction:** Hook the viewer quickly (first 30 seconds).
+2.  **Analysis:** Deep dive into the main topic and provide evidence.
+3.  **Conclusion:** Summarize key themes and hint at the next project.
+
+### Visualizing the Setup
+
+Here's a concept image for the title card:
+![Title Card Concept](https://placehold.co/800x400/3b82f6/fff?text=TITLE+CARD+CONCEPT)
+
+> "The first draft is always about getting the ideas out. The second draft is when the magic happens."
+
+I plan to spend all of next week perfecting the voiceover script. Stay tuned!
+        `
+            }, 
             // --- TUTORIAL POST (HOW TO USE MARKDOWN & IMAGES) ---
             {
                 id: "static_0", 
@@ -1210,9 +1247,7 @@ You can write normal text here. It is **much easier** than writing HTML tags.
 
 ### Adding Images
 Just use this format: 
-\`![Image Description](YOUR_IMAGE_LINK_HERE)\`
-
-![Example Image](https://placehold.co/600x300/0891b2/fff?text=Markdown+Image+Example)
+![Image Description](https://placehold.co/600x300/0891b2/fff?text=Markdown+Image+Example)
 
 ### Quotes
 > "This is a blockquote. It looks stylish automatically."
@@ -1222,89 +1257,39 @@ Happy writing!
                 comments: []
             },
             
-//here i am instering a section to create new posts
-            
+            // --- YOUR NEW POST (CLEANED) ---
             {
                 id: "turning17", 
-                title: "Turning 17 years old——my thoughts and experiences so far", 
+                title: "Turning 17 years old——my thoughts and experiences so far",  
                 date: "2025-12-11",
                 category: "Personal",
                 excerpt: "What I think of so far in my life",
                 
-                // --- HOW TO CHANGE COVER IMAGE ---
-                // 1. Find the 'image' line below.
-                // 2. Paste your image link inside the quotes "..."
-                // 3. If you want an emoji instead, remove this line and use emoji: "😎"
+                // The image link you provided:
                 image: "https://digitalsynopsis.com/wp-content/uploads/2017/12/funny-agency-life-creative-designer-copywriter-memes-1.jpg", 
                 
-                // --- WRITING IN MARKDOWN ---
-                // You can now use simple symbols!
                 content: `
-# This is a Main Heading
-## This is a Subheading
+# Life at Seventeen
+
+## Thoughts on School and Work
 
 You can write normal text here. It is **much easier** than writing HTML tags.
 
-### Lists are easy:
-- Item one
-- Item two
-- Item three
+### Current Challenges:
+- Time management
+- Balancing college workload
+- Finding the next big video topic
 
-### Adding Images
-Just use this format: 
-\`![Image Description](YOUR_IMAGE_LINK_HERE)\`
+### Inspiration
+Here is a fun image I found about creative life: 
+![Agency Life Meme](https://digitalsynopsis.com/wp-content/uploads/2017/12/funny-agency-life-creative-designer-copywriter-memes-1.jpg)
 
-![Example Image](https://placehold.co/600x300/0891b2/fff?text=Markdown+Image+Example)
-
-### Quotes
-> "This is a blockquote. It looks stylish automatically."
-
-Happy writing!
+### Next Steps
+My next big focus will be on the 'Creative' video idea outlined in my previous post (static\_3).
                 `,
                 comments: []
-            },
-
-
-
-
-
-
-
-
-
-
-
-            
-            // --- OLD POSTS ---
-            {
-//                id: "static_1",
-//                title: "Returning to Simplicity",
-  //              date: "2025-12-09",
-    //            category: "Engineering",
-      //          excerpt: "Stripping back aesthetics for cleaner looks.",
-        //        image: "https://placehold.co/400x350/0891b2/fff?text=Design+Post",
-          //      content: `In a world of maximalist design, sometimes the best solution is to strip everything back to the essentials. This principle is especially true in web development, where speed and accessibility are paramount. By favoring clean lines and high contrast, we ensure the user's focus remains on the content. Less glitter, more meaning.
-
-//### Why Less is More
-
-//Minimalist interfaces lead to faster load times and reduced cognitive load for the user. Every element must earn its place on the screen. We focus on utility over decoration, making every interaction intuitive and efficient.`,  
-  //              comments: []
-    //        },
-      //      {
-        //        id: "static_2",
-          //      title: "The Void Aesthetic",
-            //    date: "2025-12-01",
-              //  category: "Personal",
-                //excerpt: "Deep blue gradients in UI design.",
-                //image: "https://placehold.co/400x350/020617/fff?text=Dark+Mode+Vibe",
-                //content: `There is something inherently calming about the void aesthetic, particularly when using deep, saturated blues. It provides a visual depth that traditional dark modes often lack. This design choice is not just about reducing eye strain; it's about creating an atmosphere.
-
-//### Creating Depth
-
-//We use subtle ambient light effects and blurred orbs (as seen in the background of this site!) to provide structure without being distracting. The challenge is balancing the darkness so that text remains crisp and readable, especially on high-resolution screens.`,
-  //              comments: []
-    //        }
-       // ];
+            }
+        ];
 
         // REDUCED TO 13 IMAGES
         const marqueeImages = [
