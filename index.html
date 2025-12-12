@@ -8,6 +8,9 @@
     <!-- Fonts: Montserrat (Main) & VT323 (Subtle accents) -->
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=VT323&display=swap" rel="stylesheet">
     
+    <!-- NEW: Markdown Parser Library -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
     <style>
         /* --- 1. THEME CONFIGURATION --- */
         :root {
@@ -163,9 +166,11 @@
 
         .theme-toggle-btn:hover { background: var(--glass-highlight); color: var(--accent-cyan); border-color: var(--accent-cyan); }
 
-        /* --- 6. LAYOUT --- */
+        /* --- 6. LAYOUT (UPDATED FOR WIDER VIEW) --- */
         .container {
-            max-width: 1600px; /* WIDENED FOR DESKTOP VIEW */
+            /* Changed from 1600px to 95vw to be much wider on desktop */
+            max-width: 95vw; 
+            width: 1800px; /* Cap at 1800px just in case of ultra-wide monitors */
             margin: 40px auto;
             display: grid; grid-template-columns: 1fr 280px; /* Main Content | Global Sidebar */
             gap: 40px; padding: 0 30px; flex-grow: 1;
@@ -174,7 +179,7 @@
         main { min-width: 0; }
 
         @media (max-width: 900px) {
-            .container { grid-template-columns: 1fr; }
+            .container { grid-template-columns: 1fr; width: 100%; max-width: 100%; }
             .top-bar { padding: 15px 20px; }
             .nav-links { display: none; }
         }
@@ -244,7 +249,6 @@
         }
         .marquee-track { display: flex; gap: 20px; width: max-content; animation: scroll 89s linear infinite; }
         .marquee-item {
-            /* ADJUSTED FOR MORE RECTANGULAR LOOK */
             width: 400px;  
             height: 87px;  
             flex-shrink: 0;
@@ -259,10 +263,10 @@
 
         /* --- 10. BLOG LAYOUT & READER --- */
         .blog-internal-layout {
-            /* Adjusting the column layout to use more space */
+            /* UPDATED: Left column fixed at 250px, right column takes ALL remaining space (1fr) */
             display: grid;
-            grid-template-columns: 240px 1fr; /* Sidebar | Feed */
-            gap: 30px;
+            grid-template-columns: 250px 1fr; 
+            gap: 40px;
         }
 
         .blog-sidebar-widget { margin-bottom: 20px; }
@@ -352,9 +356,36 @@
         .reader-title { font-size: 2.2rem; font-weight: 800; margin-bottom: 15px; color: var(--text-primary); }
         .reader-meta { font-size: 0.85rem; color: var(--text-secondary); display: flex; gap: 15px; align-items: center; }
         .reader-content { font-size: 1.05rem; line-height: 1.8; color: var(--text-primary); }
-        .reader-content p { margin-bottom: 20px; }
-        .reader-content h3 { margin-top: 30px; margin-bottom: 15px; font-size: 1.4rem; color: var(--accent-cyan); }
         
+        /* MARKDOWN ELEMENT STYLING */
+        .reader-content p { margin-bottom: 20px; }
+        .reader-content h1, 
+        .reader-content h2, 
+        .reader-content h3, 
+        .reader-content h4 { 
+            margin-top: 30px; margin-bottom: 15px; color: var(--text-primary); font-weight: 700;
+        }
+        .reader-content h1 { font-size: 1.8rem; border-bottom: 1px solid var(--glass-border); padding-bottom: 10px; }
+        .reader-content h2 { font-size: 1.5rem; color: var(--accent-cyan); }
+        .reader-content h3 { font-size: 1.25rem; }
+        
+        .reader-content ul, .reader-content ol { margin-bottom: 20px; padding-left: 25px; }
+        .reader-content li { margin-bottom: 8px; color: var(--text-secondary); }
+        .reader-content strong { color: var(--text-primary); font-weight: 700; }
+        .reader-content blockquote {
+            border-left: 4px solid var(--accent-cyan);
+            padding-left: 15px; margin: 20px 0;
+            font-style: italic; color: var(--text-secondary);
+        }
+        
+        /* --- AUTOMATIC IMAGE STYLING --- */
+        .reader-content img {
+            max-width: 100%; height: auto; border-radius: 8px;
+            margin: 25px auto; display: block;
+            border: 1px solid var(--glass-border);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
         /* New Hero Image Style */
         .reader-cover-img {
             width: 100%; height: 350px; object-fit: cover; border-radius: 8px;
@@ -623,8 +654,8 @@
                         <!-- 2. BLOG READER VIEW (Hidden by default) -->
                         <div id="blog-reader" class="glass" style="padding: 40px;">
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                                <!-- CHANGED: Use showPage('blog') to handle URL and page transition -->
-                                <button onclick="showPage('blog')" class="btn-ice">← Back to Journal</button>
+                                <!-- CHANGED: Use specific helper function to guarantee return -->
+                                <button onclick="goBackToJournal()" class="btn-ice">← Back to Journal</button>
                                 <button onclick="toggleSavePost()" id="btn-save-post" class="btn-ice">❤️ Save</button>
                             </div>
                             
@@ -1149,6 +1180,48 @@
         ];
 
         window.staticBlogPosts = [
+            // --- TUTORIAL POST (HOW TO USE MARKDOWN & IMAGES) ---
+            {
+                id: "static_0", 
+                title: "How to Write in Markdown", 
+                date: "2025-12-11",
+                category: "Guide",
+                excerpt: "Learn how to format your posts easily with Markdown!",
+                
+                // --- HOW TO CHANGE COVER IMAGE ---
+                // 1. Find the 'image' line below.
+                // 2. Paste your image link inside the quotes "..."
+                // 3. If you want an emoji instead, remove this line and use emoji: "😎"
+                image: "https://placehold.co/600x400/2563eb/fff?text=Markdown+Tutorial", 
+                
+                // --- WRITING IN MARKDOWN ---
+                // You can now use simple symbols!
+                content: `
+# This is a Main Heading
+## This is a Subheading
+
+You can write normal text here. It is **much easier** than writing HTML tags.
+
+### Lists are easy:
+- Item one
+- Item two
+- Item three
+
+### Adding Images
+Just use this format: 
+\`![Image Description](YOUR_IMAGE_LINK_HERE)\`
+
+![Example Image](https://placehold.co/600x300/0891b2/fff?text=Markdown+Image+Example)
+
+### Quotes
+> "This is a blockquote. It looks stylish automatically."
+
+Happy writing!
+                `,
+                comments: []
+            },
+            
+            // --- OLD POSTS ---
             {
                 id: "static_1",
                 title: "Returning to Simplicity",
@@ -1156,7 +1229,11 @@
                 category: "Engineering",
                 excerpt: "Stripping back aesthetics for cleaner looks.",
                 image: "https://placehold.co/400x350/0891b2/fff?text=Design+Post",
-                content: `<p>In a world of maximalist design, sometimes the best solution is to strip everything back to the essentials. This principle is especially true in web development, where speed and accessibility are paramount. By favoring clean lines and high contrast, we ensure the user's focus remains on the content. Less glitter, more meaning.</p><h3>Why Less is More</h3><p>Minimalist interfaces lead to faster load times and reduced cognitive load for the user. Every element must earn its place on the screen. We focus on utility over decoration, making every interaction intuitive and efficient.</p>`,  
+                content: `In a world of maximalist design, sometimes the best solution is to strip everything back to the essentials. This principle is especially true in web development, where speed and accessibility are paramount. By favoring clean lines and high contrast, we ensure the user's focus remains on the content. Less glitter, more meaning.
+
+### Why Less is More
+
+Minimalist interfaces lead to faster load times and reduced cognitive load for the user. Every element must earn its place on the screen. We focus on utility over decoration, making every interaction intuitive and efficient.`,  
                 comments: []
             },
             {
@@ -1166,7 +1243,11 @@
                 category: "Personal",
                 excerpt: "Deep blue gradients in UI design.",
                 image: "https://placehold.co/400x350/020617/fff?text=Dark+Mode+Vibe",
-                content: `<p>There is something inherently calming about the void aesthetic, particularly when using deep, saturated blues. It provides a visual depth that traditional dark modes often lack. This design choice is not just about reducing eye strain; it's about creating an atmosphere.</p><h3>Creating Depth</h3><p>We use subtle ambient light effects and blurred orbs (as seen in the background of this site!) to provide structure without being distracting. The challenge is balancing the darkness so that text remains crisp and readable, especially on high-resolution screens.</p>`,
+                content: `There is something inherently calming about the void aesthetic, particularly when using deep, saturated blues. It provides a visual depth that traditional dark modes often lack. This design choice is not just about reducing eye strain; it's about creating an atmosphere.
+
+### Creating Depth
+
+We use subtle ambient light effects and blurred orbs (as seen in the background of this site!) to provide structure without being distracting. The challenge is balancing the darkness so that text remains crisp and readable, especially on high-resolution screens.`,
                 comments: []
             }
         ];
@@ -1198,6 +1279,18 @@
             }
         }
 
+        // --- NEW: DEDICATED BACK FUNCTION ---
+        // Forces the reader to close and resets URL, avoiding router logic issues
+        window.goBackToJournal = () => {
+            closeReader();
+            // Update URL to /blog
+            history.pushState({ id: 'blog' }, '', '/blog');
+            // Ensure visual state is correct (highlight nav, etc) without pushing history again
+            showPage('blog', false); 
+            // Scroll to top of list
+            window.scrollTo({top:0, behavior:'smooth'});
+        }
+
         function showPage(id, updateHistory = true) {
             
             // Validate and determine the final route ID
@@ -1211,10 +1304,18 @@
                 routeId = 'home';
             }
 
-            window.scrollTo({top:0, behavior:'smooth'});
-            document.querySelectorAll('.page-section').forEach(p => p.classList.remove('active'));
-            // Delay to allow CSS animation to trigger properly
-            setTimeout(() => document.getElementById(routeId).classList.add('active'), 50);
+            // --- OPTIMIZED TRANSITION LOGIC ---
+            // Check if we are already viewing this section (e.g., clicking "Back to Journal" while on "Blog")
+            const currentSection = document.querySelector('.page-section.active');
+            const isSameSection = currentSection && currentSection.id === routeId;
+
+            if (!isSameSection) {
+                // Only run the fade-in animation/scroll if we are changing pages
+                window.scrollTo({top:0, behavior:'smooth'});
+                document.querySelectorAll('.page-section').forEach(p => p.classList.remove('active'));
+                // Delay to allow CSS animation to trigger properly
+                setTimeout(() => document.getElementById(routeId).classList.add('active'), 50);
+            }
             
             document.querySelectorAll('.nav-links a').forEach(a => a.classList.remove('active'));
             const navId = VALID_ROUTES.includes(routeId) ? routeId : 'home';
@@ -1228,8 +1329,9 @@
                 history.pushState({ id: routeId }, '', path);
             }
             
-            // Ensure the reader view is closed unless we are navigating to the main 'blog' page
-            if (routeId !== 'blog') {
+            // --- FIXED: READER CLOSING LOGIC ---
+            // If we navigate to the main 'blog' page (not a specific post), close the reader.
+            if (id === 'blog' || routeId !== 'blog') {
                  closeReader();
             }
         }
@@ -1329,7 +1431,7 @@
                 
                 let thumbContent;
                 if (p.image) {
-                    thumbContent = `<img src="${p.image}" alt="${p.title}" onerror="this.onerror=null;this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMDAiIGhlaWdodD0iMTQwIiB2aWV3Qm94PSIwIDAgMjAwIDE0MCI+PHJlY3Qgd2lkdGg9IjIwMCIgaGVpZ2h0PSIxNDAiIGZpbGw9IiMzMzMiLz48dGV4dCB4PSI1MCUiIHk9IjUwJSIgZG9taW5hbnQtYmFzZWxpbmU9Im1pZGRsZSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1zaXplPSIyMCIgZmlsbD0iI2ZmZiI+Q292ZXIgSW1hZ2U8L3RleHQ+PC9zdmc+'" style="width:100%; height:100%; object-fit:cover;">`;
+                    thumbContent = `<img src="${p.image}" alt="${p.title}" onerror="this.onerror=null;this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMDAiIGhlaWdodD0iMTQwIiB2aWV3Qm94PSIwIDAgMjgwIDE0MCI+PHJlY3Qgd2lkdGg9IjIwMCIgaGVpZ2h0PSIxNDAiIGZpbGw9IiMzMzMiLz48dGV4dCB4PSI1MCUiIHk9IjUwJSIgZG9taW5hbnQtYmFzZWxpbmU9Im1pZGRsZSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1zaXplPSIyMCIgZmlsbD0iI2ZmZiI+Q292ZXIgSW1hZ2U8L3RleHQ+PC9zdmc+'" style="width:100%; height:100%; object-fit:cover;">`;
                 } else {
                     thumbContent = p.emoji || '📄';
                 }
@@ -1355,11 +1457,19 @@
             
             if(!post) return;
             
-            const stats = calculateReadStats(post.content);
+            // --- UPDATED: PARSE MARKDOWN ---
+            // We now pass the content through marked.parse() to convert Markdown to HTML
+            const markdownContent = post.content || "";
+            const htmlContent = marked.parse(markdownContent);
+            
+            const stats = calculateReadStats(htmlContent); // stats calculated on final HTML
+            
             document.getElementById('reader-title').innerText = post.title;
             document.getElementById('reader-date').innerText = "📅 " + post.date;
             document.getElementById('reader-stats').innerText = `${stats.count} words • ${stats.time} min read`;
-            document.getElementById('reader-body').innerHTML = post.content;
+            
+            // Inject the parsed HTML
+            document.getElementById('reader-body').innerHTML = htmlContent;
             
             // Handle Cover Image
             const coverImg = document.getElementById('reader-cover');
