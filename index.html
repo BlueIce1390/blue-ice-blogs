@@ -986,7 +986,7 @@
                 window.liveBlogPosts = posts; 
 
                 // If DB empty, fallback to static
-                if(projects.length === 0 && posts.length === 0) {
+                if(posts.length === 0 && projects.length === 0) {
                      console.log("DB is empty. Falling back to static data.");
                      window.renderProjects(window.staticProjectData);
                      window.renderBlogFeed(window.staticBlogPosts);
@@ -1034,7 +1034,7 @@
                 let uploadCount = 0;
 
                 // Helper to create a clean ID from title for Projects
-                const slugify = (text) => text.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/(^_+|_+$)/g, '');
+                const slugify = (text) => text.toLowerCase().replace(/[^a-z0-9]/g, '_').replace(/(^_+|_+$)/g, '');
 
                 // 1. Upload/Update Projects (Using slugified title as document ID)
                 for (const p of window.staticProjectData) {
@@ -1066,7 +1066,7 @@
             
             try {
                 let deleteCount = 0;
-                const slugify = (text) => text.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/(^_+|_+$)/g, '');
+                const slugify = (text) => text.toLowerCase().replace(/[^a-z0-9]/g, '_').replace(/(^_+|_+$)/g, '');
 
                 // 1. Delete Projects
                 for (const p of window.staticProjectData) {
@@ -1157,6 +1157,46 @@
 
         // Start App
         initApp();
+
+        // --- COMMENT SUBMISSION (FIXED: Moved into Module scope for Firebase access) ---
+        window.submitComment = async () => {
+            const txt = document.getElementById('new-comment-text').value;
+
+            if (!db) return window.showMessage("Database not connected. Comment not saved.", true);
+            if (!window.currentUser || (window.authUser && window.authUser.isAnonymous)) return window.showMessage("Please log in with a registered account to post comments.", true);
+            if (!window.currentPostId || window.currentPostId.startsWith('static_')) return window.showMessage("Cannot comment on static posts. Please upload posts to Firebase first.", true);
+
+            const text = txt.trim();
+            if (!text) return;
+
+            try {
+                const postRef = doc(db, "posts", window.currentPostId);
+                const commentsCollectionRef = collection(postRef, "comments");
+
+                await addDoc(commentsCollectionRef, {
+                    user: window.currentUser,
+                    text: text,
+                    timestamp: new Date().toISOString(), // Use client timestamp for simple sorting
+                    userId: window.authUser.uid
+                });
+                
+                document.getElementById('new-comment-text').value = "";
+                
+                // --- INSTANT UI UPDATE ---
+                // Fetch and re-render the comments immediately to show the new one
+                // We rely on the function being available in the window scope from the lower script
+                const freshComments = await window.fetchComments(window.currentPostId);
+                const post = window.liveBlogPosts.find(p => p.id === window.currentPostId);
+                if(post) post.comments = freshComments; // Update the stored version
+                window.renderComments(post);
+
+                window.showMessage("Comment posted successfully!");
+                
+            } catch (e) {
+                console.error("Error saving comment:", e);
+                window.showMessage("Failed to save comment. Check Firebase rules to allow writes to posts/{postId}/comments.", true);
+            }
+        };
     </script>
 
     <!-- STANDARD JS LOGIC -->
@@ -1644,17 +1684,9 @@ My next big focus will be on the 'Creative' video idea outlined in my previous p
             }
         };
 
-        window.submitComment = async () => {
-            const txt = document.getElementById('new-comment-text').value.trim();
-            if(!txt) return;
-            
-            if (window.module_submitComment) {
-                await window.module_submitComment(txt);
-            } else {
-                window.showMessage(`Cannot save comment. Firebase Module is not loaded or configured.`, true);
-                document.getElementById('new-comment-text').value = "";
-            }
-        };
+        // window.submitComment logic is now in the module scope above.
+        // It relies on window.updateCommentFormVisibility, window.showMessage, window.fetchComments, and window.renderComments being defined here.
+
 
         // --- 5. DASHBOARD & SAVING LOGIC ---
         
