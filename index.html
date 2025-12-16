@@ -353,10 +353,26 @@
 
         /* --- BLOG READER VIEW --- */
         #blog-reader { display: none; animation: fadeIn 0.5s ease; }
-        .reader-header { margin-bottom: 30px; border-bottom: 1px solid var(--glass-border); padding-bottom: 20px; }
+        /* Centered Header with Max Width */
+        .reader-header { 
+            margin-bottom: 30px; 
+            border-bottom: 1px solid var(--glass-border); 
+            padding-bottom: 20px;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+        }
         .reader-title { font-size: 2.2rem; font-weight: 800; margin-bottom: 15px; color: var(--text-primary); }
         .reader-meta { font-size: 0.85rem; color: var(--text-secondary); display: flex; gap: 15px; align-items: center; }
-        .reader-content { font-size: 1.05rem; line-height: 1.8; color: var(--text-primary); }
+        
+        /* READER CONTENT (Width Constraint) */
+        .reader-content { 
+            font-size: 1.05rem; 
+            line-height: 1.8; 
+            color: var(--text-primary); 
+            max-width: 800px;  /* Prevent lines from being too long */
+            margin: 0 auto;    /* Center the content */
+        }
         
         /* MARKDOWN ELEMENT STYLING */
         .reader-content p { margin-bottom: 20px; }
@@ -379,23 +395,39 @@
             font-style: italic; color: var(--text-secondary);
         }
         
-        /* --- AUTOMATIC IMAGE STYLING --- */
+        /* --- AUTOMATIC IMAGE STYLING (FIXED) --- */
         .reader-content img {
-            max-width: 100%; height: auto; border-radius: 8px;
-            margin: 25px auto; display: block;
+            max-width: 100%;
+            height: auto; 
+            max-height: 500px; /* Constrain max vertical size */
+            border-radius: 8px;
+            margin: 25px auto; 
+            display: block;
             border: 1px solid var(--glass-border);
             box-shadow: 0 4px 12px rgba(0,0,0,0.1);
         }
 
-        /* New Hero Image Style */
+        /* New Hero Image Style (Constrained - FIXED) */
         .reader-cover-img {
-            width: 100%; height: 350px; object-fit: cover; border-radius: 8px;
-            margin-bottom: 30px; border: 1px solid var(--glass-border);
-            display: none; /* Hidden by default if no image */
+            width: 100%; 
+            max-width: 800px;  /* Align with text column */
+            height: 350px;     /* Fixed comfortable height */
+            object-fit: cover; /* Prevent stretching, crop instead */
+            border-radius: 8px;
+            margin: 0 auto 30px auto; 
+            border: 1px solid var(--glass-border);
+            display: none; 
         }
 
         /* Comments Section */
-        .comments-section { margin-top: 50px; border-top: 1px solid var(--glass-border); padding-top: 30px; }
+        .comments-section { 
+            margin-top: 50px; 
+            border-top: 1px solid var(--glass-border); 
+            padding-top: 30px; 
+            max-width: 800px; /* Align with content */
+            margin-left: auto;
+            margin-right: auto;
+        }
         .comments-header { font-size: 1.2rem; font-weight: 700; margin-bottom: 20px; }
         .comment-list { margin-bottom: 30px; }
         .comment-item { 
@@ -519,7 +551,7 @@
         .image-preview {
             max-width: 100%;
             max-height: 200px;
-            object-fit: cover;
+            object-fit: contain; /* Better preview fit */
             border-radius: 6px;
             margin-top: 10px;
             border: 1px solid var(--glass-border);
@@ -1106,7 +1138,7 @@
                 let uploadCount = 0;
 
                 // Helper to create a clean ID from title for Projects
-                const slugify = (text) => text.toLowerCase().replace(/[^a-z0-9]/g, '_').replace(/(^_+|_+$)/g, '');
+                const slugify = (text) => text.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/(^_+|_+$)/g, '');
 
                 // 1. Upload/Update Projects (Using slugified title as document ID)
                 for (const p of window.staticProjectData) {
@@ -1184,6 +1216,42 @@
         }
 
         // --- NEW ADMIN GUI UPLOAD LOGIC ---
+        
+        // Helper function to compress image on client-side before base64
+        function compressImage(file, maxWidth, maxHeight, quality) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = event => {
+                    const img = new Image();
+                    img.src = event.target.result;
+                    img.onload = () => {
+                        let width = img.width;
+                        let height = img.height;
+                        if (width > height) {
+                            if (width > maxWidth) {
+                                height *= maxWidth / width;
+                                width = maxWidth;
+                            }
+                        } else {
+                            if (height > maxHeight) {
+                                width *= maxHeight / height;
+                                height = maxHeight;
+                            }
+                        }
+                        const canvas = document.createElement('canvas');
+                        canvas.width = width;
+                        canvas.height = height;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, width, height);
+                        resolve(canvas.toDataURL('image/jpeg', quality));
+                    };
+                    img.onerror = error => reject(error);
+                };
+                reader.onerror = error => reject(error);
+            });
+        }
+
         window.uploadNewPostViaGUI = async () => {
             if (!db) return window.showMessage("Database not connected.", true);
             if (!window.authUser || window.authUser.email !== 'archan.s.bhatt@gmail.com') return window.showMessage("Permission Denied: Admin only.", true);
@@ -1332,6 +1400,15 @@
                 window.showMessage("Failed to save comment. Check Firebase rules to allow writes to posts/{postId}/comments.", true);
             }
         };
+
+        // --- EXPORT COMPRESS FUNCTION FOR USE IN LOWER SCRIPT ---
+        // We attach it to window so the non-module script can call it if needed, 
+        // though currently the handler logic is in the non-module script below, 
+        // calling a promise there.
+        // ACTUALLY, the handlers below need access to 'readFile' logic.
+        // It is better to keep the file reading logic in the non-module script below 
+        // but the 'compressImage' relies on standard canvas API, so we can define it in the non-module script.
+        
     </script>
 
     <!-- STANDARD JS LOGIC -->
@@ -1654,7 +1731,7 @@ My next big focus will be on the 'Creative' video idea outlined in my previous p
             const track = document.getElementById('marquee-track');
             track.innerHTML = "";
             [...marqueeImages, ...marqueeImages].forEach((img, i) => {
-                const fallback = `data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyODAiIGhlaWdodD0iMTIwIiB2aWV3Qm94PSIwIDAgMjgwIDEyMCI+PHJlY3Qgd2lkdGg9IjI4MCIgaGVpZ2h0PSIxMjAiIGZpbGw9IiMzMzMiLz48dGV4dCB4PSI1MCUiIHk9IjUwJSIgZG9taW5hbnQtYmFzZWxpbmU9Im1pZGRsZSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1zaXplPSIyMCIgZmlsbD0iI2ZmZiI+SW1hZ2UgI2ZhbGbiYWNrPC90ZXh0Pjwvc3ZnPg==`;
+                const fallback = `data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyODAiIGhlaWdodD0iMTIwIiB2aWV3Qm94PSIwIDAgMjgwIDEyMCI+PHJlY3Qgd2lkdGg9IjI4MCIgaGVpZ2h0PSIxMjAiIGZpbGw9IiMzMzMiLz48dGV4dCB4PSI1MCUiIHk9IjUwJSIgZG9taW5hbnQtYmFzZWxpbmU9Im1pZGRsZSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1zaXplPSIyMCIgZmlsbD0iI2ZmZiI+SW1hZ2UgI2ZhbGxiYWNrPC90ZXh0Pjwvc3ZnPg==`;
                 track.innerHTML += `<div class="marquee-item"><img src="${img}" onerror="this.src='${fallback}'"></div>`;
             });
         }
@@ -2027,6 +2104,42 @@ My next big focus will be on the 'Creative' video idea outlined in my previous p
                 }
             });
         }
+        
+        // Helper function to compress image on client-side before base64
+        function compressImage(file, maxWidth, maxHeight, quality) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = event => {
+                    const img = new Image();
+                    img.src = event.target.result;
+                    img.onload = () => {
+                        let width = img.width;
+                        let height = img.height;
+                        if (width > height) {
+                            if (width > maxWidth) {
+                                height *= maxWidth / width;
+                                width = maxWidth;
+                            }
+                        } else {
+                            if (height > maxHeight) {
+                                width *= maxHeight / height;
+                                height = maxHeight;
+                            }
+                        }
+                        const canvas = document.createElement('canvas');
+                        canvas.width = width;
+                        canvas.height = height;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, width, height);
+                        resolve(canvas.toDataURL('image/jpeg', quality));
+                    };
+                    img.onerror = error => reject(error);
+                };
+                reader.onerror = error => reject(error);
+            });
+        }
+
 
         // Handler for the Cover Image
         async function handleImageFile(file) {
@@ -2035,7 +2148,8 @@ My next big focus will be on the 'Creative' video idea outlined in my previous p
                 return;
             }
             try {
-                const base64Data = await readFile(file, 'base64');
+                // Compress the image before setting it (Aggressive compression: 800px, 0.6 quality)
+                const base64Data = await compressImage(file, 800, 800, 0.6); 
                 window.newPost.coverImageBase64 = base64Data;
                 
                 const preview = document.getElementById('cover-image-preview');
