@@ -430,12 +430,12 @@
         .char-display img { width: 100%; height: 100%; object-fit: cover; object-position: center top; }
 
         /* --- 12. MISC --- */
-        input, textarea {
+        input, textarea, select {
             width: 100%; padding: 10px; background: var(--glass-highlight);
             border: 1px solid var(--glass-border); color: var(--text-primary);
             border-radius: 4px; margin-bottom: 10px; font-family: var(--font-main);
         }
-        input:focus { outline: none; border-color: var(--accent-cyan); }
+        input:focus, select:focus { outline: none; border-color: var(--accent-cyan); }
 
         #boot-screen {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
@@ -820,7 +820,16 @@
                             <div id="post-creator-form">
                                 <input type="text" id="new-post-title" placeholder="Post Title (required)">
                                 <input type="text" id="new-post-id" placeholder="Unique ID (e.g., 'my-new-post')">
-                                <input type="text" id="new-post-category" placeholder="Category (e.g., 'Creative')">
+                                <!-- Replaced Input with Select for Category -->
+                                <select id="new-post-category">
+                                    <option value="" disabled selected>Select Category</option>
+                                    <option value="Creative">Creative</option>
+                                    <option value="Guide">Guide</option>
+                                    <option value="Personal">Personal</option>
+                                    <option value="School">School</option>
+                                    <option value="Youtube">Youtube</option>
+                                    <option value="Engineering">Engineering</option>
+                                </select>
                                 <textarea id="new-post-excerpt" placeholder="Short Excerpt (for list view)"></textarea>
 
                                 <!-- Cover Image Drop Area -->
@@ -1129,7 +1138,7 @@
             
             try {
                 let deleteCount = 0;
-                const slugify = (text) => text.toLowerCase().replace(/[^a-z0-9]/g, '_').replace(/(^_+|_+$)/g, '');
+                const slugify = (text) => text.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/(^_+|_+$)/g, '');
 
                 // 1. Delete Projects
                 for (const p of window.staticProjectData) {
@@ -1181,7 +1190,8 @@
 
             const title = document.getElementById('new-post-title').value.trim();
             const id = document.getElementById('new-post-id').value.trim();
-            const category = document.getElementById('new-post-category').value.trim() || 'Uncategorized';
+            const categorySelect = document.getElementById('new-post-category');
+            const category = categorySelect.value || 'Uncategorized';
             const excerpt = document.getElementById('new-post-excerpt').value.trim() || 'No excerpt provided.';
             const image = window.newPost.coverImageBase64;
             const content = window.newPost.markdownContent;
@@ -1219,7 +1229,7 @@
                 // Clear GUI inputs after successful upload
                 document.getElementById('new-post-title').value = '';
                 document.getElementById('new-post-id').value = '';
-                document.getElementById('new-post-category').value = '';
+                categorySelect.selectedIndex = 0; // Reset to default
                 document.getElementById('new-post-excerpt').value = '';
                 document.getElementById('cover-image-preview').src = '';
                 document.getElementById('cover-image-preview').style.display = 'none';
