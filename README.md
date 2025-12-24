@@ -1,6 +1,5 @@
 # blue-ice-portfolio
-Archan's Blog + Portfolio Website. WOW SO COOL!
-
+instruction
 
 
 Hello! That's a great question, especially since we've added those new upload and delete buttons.
